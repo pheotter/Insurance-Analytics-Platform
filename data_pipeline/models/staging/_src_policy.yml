@@ -1,0 +1,219 @@
+version: 2
+
+sources:
+  - name: data
+    description: A clone of a snowflake database
+    database: dbt_db
+    schema: dbt_schema
+    tables:
+      - name: dim_policy
+        description: Simulated policy data
+        columns:
+          - name: policy_id
+            description: "policy id"
+            tests:
+              - unique
+              - not_null
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","NJ","VA","WA","AZ","MA"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan","suv","truck","sports","electric"]
+
+          - name: effective_date
+            description: "Policy effective data"
+            tests:
+              - not_null
+              - effective_date_valid:
+                  arguments:
+                    min_date: '2010-01-01'
+
+          - name: expiration_date
+            description: "Policy expiration date"
+            tests:
+              - not_null
+
+          - name: status
+            description: "The status of the policy"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["active", "cancelled", "expired"]
+
+          - name: written_premium
+            description: "Total premium written for the policy"
+            tests:
+              - not_null
+
+          - name: term_months
+            description: "Policy term in months"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [6, 12]
+
+          - name: agent_id
+            description: "Agent who sold the policy"
+            tests:
+              - not_null
+
+          - name: underwriter_id
+            description: "Underwriter assigned"
+            tests:
+              - not_null
+
+          - name: vehicle_year
+            description: "Vehicle manufacturing year"
+            tests:
+              - not_null
+
+          - name: driver_age
+            description: "Driver age"
+            tests:
+              - not_null
+
+          - name: credit_score_band
+            description: "Driver credit score category"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["excellent","good","fair","poor"]
+
+          - name: created_at
+            description: "The entry is created"
+            tests:
+              - not_null
+
+          - name: updated_at
+            description: "The policy is updated at"
+            tests:
+              - not_null
+
+      - name: dim_rate_level_history
+        description: "Simulated rate level history data"
+        columns:
+          - name: filing_id
+            description: "Filing identifier"
+            tests:
+              - not_null
+              - unique
+
+          - name: effective_date
+            description: "Effective date of the New Rate"
+            tests:
+              - not_null
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","NJ","VA","WA","AZ","MA", "ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: cumulative_factor
+            description: "Multiplicative rating factor"
+            tests:
+              - not_null
+
+      - name: fact_claim
+        description: "Simulated Fact table for insurance claims"
+        columns:
+          - name: claim_id
+            description: "Unique claim identifier"
+            tests:
+              - not_null
+              - unique
+
+          - name: policy_id
+            description: "Foreign key to dim_policy"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: policy_id
+                    to: source('data', 'dim_policy')
+
+          - name: claim_type
+            description: "Claim type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["collision", "liability", "comprehensive", "uninsured", "medical"]
+
+          - name: loss_date
+            description: "Date of loss event"
+            tests:
+              - not_null
+
+          - name: report_date
+            description: "Date claim was reported"
+            tests:
+              - not_null
+
+          - name: status
+            description: "Current status of the claim"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["open", "closed"]
+
+          - name: reported_loss
+            description: "Paid + Case reserve"
+            tests:
+              - not_null
+
+          - name: paid_loss
+            description: "Total amount paid"
+            tests:
+              - not_null
+
+          - name: case_reserve
+            description: "Case reserve amount"
+            tests:
+              - not_null
+
+          - name: incurred_loss
+            description: "Paid + Reserved"
+            tests:
+              - not_null
+
+          - name: created_at
+            tests:
+              - not_null
+
+          - name: updated_at
+            tests:
+              - not_null
