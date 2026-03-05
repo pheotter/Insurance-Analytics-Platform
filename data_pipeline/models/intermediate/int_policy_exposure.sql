@@ -26,9 +26,7 @@ policy_year as (
         p.state,
         p.risk_class,
         p.vehicle_segment,
-        p.driver_age,
         p.term_factor,
-        p.credit_score_band,
         p.written_premium,
         c.calendar_year,
 
@@ -59,8 +57,6 @@ calculate_fraction as (
         state,
         risk_class,
         vehicle_segment,
-        driver_age,
-        credit_score_band,
         term_factor,
         written_premium,
         calendar_year,
@@ -78,8 +74,6 @@ policy_earned as (
         state,
         risk_class,
         vehicle_segment,
-        driver_age,
-        credit_score_band,
         calendar_year,
 
         term_factor * year_fraction as earned_exposure,
@@ -100,8 +94,6 @@ select
     {{ segmentation_grouping('state', 'cfg.use_state') }} as state_grp,
     {{ segmentation_grouping('risk_class', 'cfg.use_risk_class') }} as risk_class_grp,
     {{ segmentation_grouping('vehicle_segment', 'cfg.use_vehicle_segment') }} as vehicle_segment_grp,
-    {{ segmentation_grouping('driver_age', 'cfg.use_driver_age') }} as driver_age_grp,
-    {{ segmentation_grouping('credit_score_band', 'cfg.use_credit_score_band') }} as credit_score_band_grp,
 
     calendar_year,
     sum(earned_exposure) as total_exposure,
@@ -110,4 +102,4 @@ select
 from policy_earned
 cross join config cfg
 
-group by 1,2,3,4,5,6
+group by 1,2,3,4

@@ -1,4 +1,7 @@
 .git
 env/
+.env
 *.pem
 logs/
+output/
+*.csv

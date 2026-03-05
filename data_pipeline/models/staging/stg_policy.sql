@@ -9,9 +9,6 @@ select
     cancellation_date,
     status as policy_status,
     written_premium,
-    term_months,
-    vehicle_year,
-    driver_age,
-    credit_score_band
+    term_months
 
-from {{ source('data', 'dim_policy') }}
+from {{ source('data', 'policy') }}

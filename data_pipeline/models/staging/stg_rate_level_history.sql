@@ -4,6 +4,8 @@ select
     effective_date,
     state,
     risk_class,
+    vehicle_segment,
+    rate_change_pct,
     cumulative_factor
 
-from {{ source('data', 'dim_rate_level_history') }}
+from {{ source('data', 'rate_level_history') }}

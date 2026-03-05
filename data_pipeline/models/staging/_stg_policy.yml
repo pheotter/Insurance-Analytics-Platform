@@ -24,20 +24,6 @@ models:
               arguments:
                 expression: "written_premium >= 0"
 
-      - name: vehicle_year
-        description: "Vehicle manufacturing year"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "vehicle_year >= 2005 AND vehicle_year <= EXTRACT(YEAR FROM CURRENT_DATE())"
-
-      - name: driver_age
-        description: "Driver age"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "driver_age >= 16 AND driver_age <= 80"
-
   - name: stg_claim
     description: "Simulated Fact table for insurance claims"
     columns:
@@ -48,33 +34,26 @@ models:
               arguments:
                 expression: "loss_date <= CURRENT_DATE"
 
-      - name: report_date
-        description: "Date claim was reported"
+      - name: transaction_date
+        description: "Date of transaction event"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "report_date >= loss_date"
+                expression: "transaction_date <= CURRENT_DATE AND transaction_date >= loss_date"
 
-      - name: close_date
-        description: "Date claim was reported"
+      - name: incremental_paid
+        description: "The amount of paid"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "close_date >= report_date"
+                expression: "incremental_paid >= 0"
 
-      - name: reported_loss
-        description: "Paid + Case reserve"
+      - name: cumulative_paid
+        description: "The amount of total paid for this claim_id"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "reported_loss >= 0"
-
-      - name: paid_loss
-        description: "Total amount paid"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "paid_loss >= 0"
+                expression: "cumulative_paid >= 0"
 
       - name: case_reserve
         description: "Case reserve amount"
@@ -83,12 +62,12 @@ models:
               arguments:
                 expression: "case_reserve >= 0"
 
-      - name: incurred_loss
+      - name: incurred
         description: "Paid + Reserved"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "incurred_loss = paid_loss + case_reserve"
+                expression: "incurred = cumulative_paid + case_reserve"
 
   - name: stg_rate_level_history
     columns:

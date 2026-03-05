@@ -2,13 +2,12 @@ select
 
     claim_id,
     policy_id,
-    claim_type,
     loss_date as accident_date,
-    report_date,
-    close_date,
-    status as claim_status,
-    paid_loss,
+    transaction_date,
+    incremental_paid,
+    cumulative_paid,
     case_reserve,
-    incurred_loss
+    incurred,
+    status as claim_status
 
-from {{ source('data', 'fact_claim') }}
+from {{ source('data', 'claim') }}
