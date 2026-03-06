@@ -14,6 +14,13 @@ select
                      accident_year
         order by development
     ) / nullif(cumulative_incurred,0) -- if cumulative_incurred_loss = 0 then turn it to null
-    as link_ratio                     -- if lead() is null, then link_ratio will be null
+    as link_ratio,                    -- if lead() is null, then link_ratio will be null
+
+    lead(cumulative_claim_count) over (
+        partition by state_grp, risk_class_grp, vehicle_segment_grp,
+                     accident_year
+        order by development
+    ) / nullif(cumulative__claim_count,0)
+    as link_ratio_cnt
 
 from triangle

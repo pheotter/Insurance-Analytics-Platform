@@ -37,7 +37,7 @@ joined as (
 config as (
     select *
     from {{ ref('segmentation_config') }}
-    where segmentation_version = 'v1'
+    where segmentation_version = '{{ var("segmentation_version") }}'
 ),
 
 

@@ -1,0 +1,13 @@
+select
+
+    segmentation_version,
+    state as state_grp,
+    risk_class as risk_class_grp,
+    vehicle_segment as vehicle_segment_grp,
+    accident_year,
+    ultimate as ultimate_loss,
+    method_reference as method,
+    comment
+
+from {{ source('actuarial_input', 'selected_ultimate')
+where type = 'loss'

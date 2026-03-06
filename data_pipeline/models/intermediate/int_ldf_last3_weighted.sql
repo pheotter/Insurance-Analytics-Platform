@@ -35,7 +35,11 @@ ldf as (
         t1.development,
 
         sum(t2.cumulative_incurred)
-        / nullif(sum(t1.cumulative_incurred),0) as last3_ldf
+        / nullif(sum(t1.cumulative_incurred),0) as last3_ldf,
+
+        sum(t2.cumulative_claim_count)
+        / nullif(sum(t1.cumulative_claim_count),0) as last3_ldf_cnt
+
 
     from filtered t1
     join filtered t2

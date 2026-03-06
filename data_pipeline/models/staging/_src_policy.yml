@@ -138,7 +138,7 @@ sources:
               - relationships:
                   arguments:
                     field: policy_id
-                    to: source('data', 'dim_policy')
+                    to: source('data', 'policy')
 
           - name: loss_date
             description: "Date of loss event"

@@ -1,0 +1,251 @@
+version: 2
+
+sources:
+  - name: actuarial_input
+    description: Actuary needs to determine the ldfs of each development, ultimate losses for different segmentation combinations and give their judgments so it's reproducible
+    database: dbt_db
+    schema: dbt_schema
+    tables:
+      - name: ldf_selection_table
+        description: ldf selections for incurred loss
+        columns:
+          - name: segmentation_version
+            description: "which segmentation combination we decide to use. See more details in models/config/segmentation_config.sql"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["v1","v2","v3"]
+
+          - name: triangle_type
+            description: "for incurred triangle or claim count triangle"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["incurred", "claim_count"]
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan", "suv", "truck", "sports", "ALL"]
+
+          - name: dev
+            description: "developement"
+            tests:
+              - not_null
+
+          - name: ldf
+            description: "ldf you choose for a specific configuration if the method is other, otherwise you don't need to fill in it"
+
+          - name: method
+            description: "which method you choose"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["last3_weighted", "avg", "weighted", "other"]
+
+          - name: ay_from
+            description: "the accident year of ldf calculation method you use starts from"
+
+          - name: ay_to
+            description: "the accident year of ldf calculation method you use ends"
+
+          - name: description
+            description: "Description how to choose the ldf"
+            tests:
+              - not_null
+
+      - name: selected_ultimate
+        description: Ultimate losses for different method, accident year and segmentation
+        columns:
+          - name: segmentation_version
+            description: "which segmentation combination we decide to use. See more details in models/config/segmentation_config.sql"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["v1","v2","v3"]
+
+          - name: type
+            description: "Ultimate loss or ultimate claim count"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["loss", "claim_count"]
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan", "suv", "truck", "sports", "ALL"]
+
+          - name: accident_year
+            description: "Accident Year"
+            tests:
+              - not_null
+
+          - name: ultimate
+            description: "Ultimate loss or ultimate claim count"
+            tests:
+              - not_null
+
+          - name: method
+            description: "which method you choose"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["BF", "Cape_cod", "Judgements"]
+
+          - name: comment
+            description: "Describe how you calculated this ultimate loss or claim count"
+            tests:
+              - not_null
+
+      - name: trend_selection
+        description: trend selections for frequency or severity or loss
+        columns:
+          - name: segmentation_version
+            description: "which segmentation combination we decide to use. See more details in models/config/segmentation_config.sql"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["v1","v2","v3"]
+
+          - name: trend_type
+            description: "frequency, severity or loss"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["frequency", "severity"]
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan", "suv", "truck", "sports", "ALL"]
+
+          - name: annual_trend
+            description: "trend value"
+            tests:
+              - not_null
+
+          - name: effective_from
+            description: "when the new rate is effective from"
+
+          - name: effective_to
+            description: "when the new rate is effective to"
+            tests:
+              - not_null
+
+          - name: description
+            description: "Description how to choose the trend"
+            tests:
+              - not_null
+
+      - name: expense_assumption
+        description: expense assumptions
+        columns:
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan", "suv", "truck", "sports", "ALL"]
+
+          - name: fixed_expense_per_exposure
+            description: "Fiexed expense per exposure"
+            tests:
+              - not_null
+
+          - name: variable_expense_ratio
+            description: "Variable underwriting expense that varies with premium"
+            tests:
+              - not_null
+
+          - name: ulae_ratio
+            description: "Unallocated loss adjustment expense ratio"
+            tests:
+              - not_null
+
+          - name: profit_ratio
+            description: "Target profit ratio"
+            tests:
+              - not_null
