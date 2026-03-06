@@ -7,7 +7,7 @@ with cl_loss as (
         accident_year,
         'Chain_ladder' as method,
         ultimate_loss
-    from {{ ref('int_ultimate_loss_CL') }}
+    from {{ ref('int_ultimate_incurred_CL') }}
 
 ),
 

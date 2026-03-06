@@ -60,7 +60,10 @@ calculate_fraction as (
         term_factor,
         written_premium,
         calendar_year,
-        greatest(datediff(day, earn_start, earn_end), 0) / total_days::float as year_fraction
+        COALESCE(
+            greatest(datediff(day, earn_start, earn_end), 0) / NULLIF(total_days, 0)::float,
+            0
+        ) as year_fraction
 
     from policy_year
 
@@ -86,7 +89,7 @@ policy_earned as (
 config as (
     select *
     from {{ ref('segmentation_config') }}
-    where segmentation_version = '{{ var("segmentation_version") }}'
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 )
 
 select

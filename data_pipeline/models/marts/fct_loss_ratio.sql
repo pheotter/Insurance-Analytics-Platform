@@ -1,1 +1,0 @@
--- loss_ratio = ultimate_loss / onlevel_earned_premium

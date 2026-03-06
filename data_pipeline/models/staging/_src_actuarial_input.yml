@@ -3,8 +3,8 @@ version: 2
 sources:
   - name: actuarial_input
     description: Actuary needs to determine the ldfs of each development, ultimate losses for different segmentation combinations and give their judgments so it's reproducible
-    database: dbt_db
-    schema: dbt_schema
+    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
     tables:
       - name: ldf_selection_table
         description: ldf selections for incurred loss
@@ -49,7 +49,7 @@ sources:
                   arguments:
                     values: ["sedan", "suv", "truck", "sports", "ALL"]
 
-          - name: dev
+          - name: developement
             description: "developement"
             tests:
               - not_null

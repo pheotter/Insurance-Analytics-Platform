@@ -20,7 +20,7 @@ select
         partition by state_grp, risk_class_grp, vehicle_segment_grp,
                      accident_year
         order by development
-    ) / nullif(cumulative__claim_count,0)
+    ) / nullif(cumulative_claim_count,0)
     as link_ratio_cnt
 
 from triangle

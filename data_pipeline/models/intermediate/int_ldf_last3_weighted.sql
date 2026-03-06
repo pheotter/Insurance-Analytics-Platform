@@ -1,7 +1,7 @@
 with base as (
 
     select *
-    from {{ ref('int_triangle_cumulative') }}
+    from {{ ref('int_claim_triangle_cumulative') }}
 
 ),
 

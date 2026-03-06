@@ -1,1 +1,0 @@
--- indicated rate change = (actual loss ratio/target loss ratio)-1

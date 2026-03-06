@@ -5,7 +5,7 @@ with triangle as (
 sel as (
     select *
     from {{ ref('stg_ldf_selection_table_claim_count') }}
-    where segmentation_version = '{{ var("segmentation_version") }}'
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 ),
 
 filtered_triangle as (

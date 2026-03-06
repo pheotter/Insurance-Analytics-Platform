@@ -3,8 +3,8 @@ version: 2
 sources:
   - name: data
     description: A clone of a snowflake database
-    database: dbt_db
-    schema: dbt_schema
+    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
     tables:
       - name: policy
         description: Simulated policy data

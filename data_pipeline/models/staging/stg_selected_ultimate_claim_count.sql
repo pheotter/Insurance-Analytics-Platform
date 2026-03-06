@@ -6,8 +6,8 @@ select
     vehicle_segment as vehicle_segment_grp,
     accident_year,
     ultimate as ultimate_claim_count,
-    method_reference as method,
+    method,
     comment
 
-from {{ source('actuarial_input', 'selected_ultimate')
+from {{ source('actuarial_input', 'selected_ultimate') }}
 where type = 'claim_count'
