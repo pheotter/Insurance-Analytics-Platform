@@ -14,12 +14,12 @@ filtered_triangle as (
     from triangle t
     left join sel s
         on t.development = s.development
-        and t.state_grp = s.state
-        and t.risk_class_grp = s.risk_class
-        and t.vehicle_segment_grp = s.vehicle_segment
+        and t.state_grp = s.state_grp
+        and t.risk_class_grp = s.risk_class_grp
+        and t.vehicle_segment_grp = s.vehicle_segment_grp
     where t.accident_year between s.ay_from and s.ay_to
 
-)
+),
 
 ldf as (
 

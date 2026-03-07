@@ -5,7 +5,7 @@ with link_ratio as (
 sel as (
     select *
     from {{ ref('stg_ldf_selection_table_incurred') }}
-    where segmentation_version = '{{ var("segmentation_version") }}'
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 ),
 
 filtered_link_ratio as (
@@ -14,12 +14,12 @@ filtered_link_ratio as (
     from link_ratio l
     left join sel s
         on l.development = s.development
-        and l.state_grp = s.state
-        and l.risk_class_grp = s.risk_class
-        and l.vehicle_segment_grp = s.vehicle_segment
+        and l.state_grp = s.state_grp
+        and l.risk_class_grp = s.risk_class_grp
+        and l.vehicle_segment_grp = s.vehicle_segment_grp
     where l.accident_year between s.ay_from and s.ay_to
 
-)
+),
 
 ldf as (
 

@@ -2,7 +2,7 @@ with sel as (
 
     select *
     from {{ ref('stg_ldf_selection_table_claim_count') }}
-    where segmentation_version = '{{ var("segmentation_version") }}'
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 
 ),
 
@@ -44,21 +44,21 @@ combined as (
     from sel s
 
     left join avg_ldf a
-        on s.state = a.state_grp
-       and s.risk_class = a.risk_class_grp
-       and s.vehicle_segment = a.vehicle_segment_grp
+        on s.state_grp = a.state_grp
+       and s.risk_class_grp = a.risk_class_grp
+       and s.vehicle_segment_grp = a.vehicle_segment_grp
        and s.development = a.development
 
     left join weighted_ldf w
-        on s.state = w.state_grp
-       and s.risk_class = w.risk_class_grp
-       and s.vehicle_segment = w.vehicle_segment_grp
+        on s.state_grp = w.state_grp
+       and s.risk_class_grp = w.risk_class_grp
+       and s.vehicle_segment_grp = w.vehicle_segment_grp
        and s.development = w.development
 
     left join last3_ldf l
-        on s.state = l.state_grp
-       and s.risk_class = l.risk_class_grp
-       and s.vehicle_segment = l.vehicle_segment_grp
+        on s.state_grp = l.state_grp
+       and s.risk_class_grp = l.risk_class_grp
+       and s.vehicle_segment_grp = l.vehicle_segment_grp
        and s.development = l.development
 
 )

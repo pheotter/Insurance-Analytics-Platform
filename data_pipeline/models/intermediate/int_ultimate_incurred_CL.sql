@@ -27,9 +27,9 @@ cdf as (
 
 select
 
-    state_grp,
-    risk_class_grp,
-    vehicle_segment_grp,
+    t.state_grp,
+    t.risk_class_grp,
+    t.vehicle_segment_grp,
     t.accident_year,
     t.cumulative_incurred * c.cdf as ultimate_loss
 
