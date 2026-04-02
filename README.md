@@ -1,15 +1,15 @@
 # Insurance Analytics Platform
 
-A personal project focused on **auto insurance actuarial pricing**, using **Snowflake + dbt + Python** to build a reproducible workflow from data generation and loss triangles to LDF/CDF, ultimate estimates, frequency/severity, and indicated premium.
+A personal project focused on **auto insurance actuarial pricing**, using **Snowflake + dbt + Python** to build a reproducible workflow from simulated source data through triangles, LDF/CDF, ultimate candidates, selected ultimate methods, trend review, and final indication outputs.
 
-> This repository is currently a portfolio-grade implementation designed to demonstrate actuarial workflow thinking and data pipeline design, with an Airflow automation plan for human-in-the-loop operations.
+> This repository is a portfolio-grade implementation of a human-in-the-loop actuarial workflow with Airflow orchestration.
 
 ---
 
 ## 1) Project Objectives
 
 - Build a repeatable actuarial pricing data pipeline.
-- Turn actuarial judgment inputs (LDF selection, selected ultimate, trend, expense assumptions) into structured data assets.
+- Turn actuarial judgment inputs (LDF selection, candidate ultimates, selected ultimate methods, trend, expense assumptions) into structured data assets.
 - Support multiple segmentation strategies (segmentation versions) for comparison.
 - Produce key pricing outputs used for rate indication:
   - Ultimate loss / claim count
@@ -23,7 +23,7 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 
 - **Data warehouse**: Snowflake
 - **Transformation framework**: dbt
-- **Data simulation**: Python (pandas / numpy)
+- **Data simulation and workbook utilities**: Python
 - **Orchestration**: Airflow
 
 ---
@@ -50,6 +50,14 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 └── *.xlsx                              # Actuarial input templates (LDF / trend / selected ultimate / expense)
 ```
 
+Workbook templates in `data_pipeline/` include:
+
+- `ldf_selection_table.xlsx`
+- `selected_ultimate.xlsx`
+- `ultimate_selection.xlsx`
+- `trend_selection.xlsx`
+- `expense_assumption.xlsx`
+
 ---
 
 ## 4) Current Data Flow
@@ -65,10 +73,12 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
    - Chain Ladder ultimate
    - policy exposure
 4. dbt `marts`:
-   - selected ultimate by method
-   - frequency / severity (with trend)
+   - all ultimate method candidates
+   - selected ultimate by accident year
+   - frequency / severity
+   - trended frequency / severity
    - pure premium
-   - indicated premium / rate change
+   - indicated premium / indicated rate change
 
 ---
 
@@ -76,10 +86,11 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 
 The workflow supports actuarial judgment updates at these checkpoints:
 
-1. **LDF selection**: update `ldf_selection_table`
-2. **Ultimate selection**: update `selected_ultimate`
-3. **Trend selection**: update `trend_selection`
-4. **Expense assumptions**: update `expense_assumption`
+1. **LDF selection**: update `ldf_selection_table.xlsx`
+2. **Candidate ultimate input**: update `selected_ultimate.xlsx`
+3. **Final ultimate method selection by AY**: update `ultimate_selection.xlsx`
+4. **Trend selection**: update `trend_selection.xlsx`
+5. **Expense assumptions**: update `expense_assumption.xlsx`
 
 This design keeps both:
 - reproducible pipeline execution
@@ -126,10 +137,10 @@ dbt deps
 dbt build
 ```
 
-You can also control method selection with vars (adjust to your model settings):
+You can also run dbt manually with segmentation vars:
 
 ```bash
-dbt run --vars '{segmentation_version: v1, loss_method: Chain_ladder, claim_count_method: Chain_ladder}'
+dbt run --vars '{segmentation_version: v1}'
 ```
 
 ---
@@ -142,22 +153,31 @@ It orchestrates:
 
 1. `generate_simulated_data`
 2. `dbt_build_triangle`
-3. `open_ldf_review`
-4. `wait_for_ldf_selection_upload`
-5. `upload_ldf_selection`
-6. `dbt_run_chain_ladder`
-7. `open_selected_ultimate_review`
-8. `wait_for_selected_ultimate_upload`
-9. `upload_selected_ultimate`
-10. `dbt_run_with_method_vars`
-11. `open_trend_review`
-12. `wait_for_trend_selection_upload`
-13. `upload_trend_selection`
-14. `dbt_run_trended_metrics`
-15. `open_expense_review`
-16. `wait_for_expense_assumption_upload`
-17. `upload_expense_assumption`
-18. `dbt_run_indication`
+3. `export_triangle_for_ldf_review`
+4. `open_ldf_review`
+5. `wait_for_ldf_selection_upload`
+6. `upload_ldf_selection`
+7. `dbt_run_chain_ladder`
+8. `export_ultimate_for_review`
+9. `open_selected_ultimate_review`
+10. `wait_for_selected_ultimate_upload`
+11. `upload_selected_ultimate`
+12. `dbt_build_ultimate_candidates`
+13. `export_ultimate_selection_for_review`
+14. `generate_ultimate_selection_template`
+15. `open_ultimate_selection_review`
+16. `wait_for_ultimate_selection_upload`
+17. `upload_ultimate_selection`
+18. `dbt_run_selected_ultimate_metrics`
+19. `export_frequency_severity_for_review`
+20. `open_trend_review`
+21. `wait_for_trend_selection_upload`
+22. `upload_trend_selection`
+23. `dbt_run_trended_metrics`
+24. `open_expense_review`
+25. `wait_for_expense_assumption_upload`
+26. `upload_expense_assumption`
+27. `dbt_run_indication`
 
 How the manual checkpoints work:
 
@@ -171,6 +191,10 @@ Supporting script:
 - `data_pipeline/upload_actuarial_inputs.py`
   - Upload all workbooks: `python upload_actuarial_inputs.py`
   - Upload one workbook: `python upload_actuarial_inputs.py --file trend_selection.xlsx`
+- `data_pipeline/export_ultimate_selection_review.py`
+  - Export all ultimate method candidates by segment and accident year
+- `data_pipeline/generate_ultimate_selection_template.py`
+  - Generate `ultimate_selection.xlsx` for final method choice by AY
 
 Airflow setup notes:
 
