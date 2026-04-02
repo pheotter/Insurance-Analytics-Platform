@@ -210,7 +210,6 @@ Airflow setup notes:
 - Some SQL models still need naming and syntax consistency cleanup.
 - Data quality coverage can be expanded (null/range/relationship/freshness tests).
 - A visualization layer (e.g., Streamlit/BI) can be added for indication and sensitivity analysis.
-- A future version can extend to cyber insurance features (security controls / threat exposure).
 
 ---
 
