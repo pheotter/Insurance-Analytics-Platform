@@ -19,8 +19,8 @@ agg as (
         risk_class_grp,
         vehicle_segment_grp,
 
-        sum(trended_frequency* trended_severity * earned_exposure)
-        / sum(earned_exposure) as pure_premium
+        sum(trended_frequency * trended_severity * total_exposure)
+        / nullif(sum(total_exposure), 0) as pure_premium
 
     from base
     group by 1,2,3
@@ -43,5 +43,3 @@ select
 from agg a
 join expense e
   on a.state_grp = e.state_grp
- and a.risk_class_grp = e.risk_class_grp
- and a.vehicle_segment_grp = e.vehicle_segment_grp

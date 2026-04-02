@@ -4,7 +4,7 @@ select
     risk_class_grp,
     vehicle_segment_grp,
     accident_year,
-    earned_exposure,
+    total_exposure,
 
     trended_frequency,
     trended_severity,

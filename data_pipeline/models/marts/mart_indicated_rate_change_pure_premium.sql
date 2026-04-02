@@ -5,7 +5,15 @@ with ind as (
 
 ),
 
-current as (
+config as (
+
+    select *
+    from {{ ref('segmentation_config') }}
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
+
+),
+
+detailed_current as (
 
     select
         *,
@@ -19,9 +27,15 @@ current as (
 
 current_rate as (
 
-    select *
-    from current
+    select
+        {{ segmentation_grouping('state_grp', 'cfg.use_state') }} as state_grp,
+        {{ segmentation_grouping('risk_class_grp', 'cfg.use_risk_class') }} as risk_class_grp,
+        {{ segmentation_grouping('vehicle_segment_grp', 'cfg.use_vehicle_segment') }} as vehicle_segment_grp,
+        avg(cumulative_factor) as cumulative_factor
+    from detailed_current
+    cross join config cfg
     where rn = 1
+    group by 1, 2, 3
 
 )
 

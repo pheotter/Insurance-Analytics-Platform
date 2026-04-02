@@ -8,7 +8,7 @@ with base as (
 trend as (
 
     select *
-    from {{ stg_trend_selection }}
+    from {{ ref('stg_trend_selection') }}
     where segmentation_version = '{{ var("segmentation_version") }}'
 
 ),
@@ -36,7 +36,7 @@ exposure_mid as (
         b.risk_class_grp,
         b.vehicle_segment_grp,
         b.accident_year,
-        b.earned_exposure,
+        b.total_exposure,
 
         b.frequency,
         b.severity,
@@ -44,38 +44,43 @@ exposure_mid as (
         f.annual_trend as trend_freq,
         s.annual_trend as trend_sev,
 
-        DATE_ADD(
-            DATE(CONCAT(b.accident_year,'-01-01')),
-            INTERVAL 182 DAY
-        ) as accident_mid, -- assume policy-term is 1 year
+        dateadd(
+            day,
+            182,
+            to_date(concat(b.accident_year, '-01-01'))
+        ) as accident_mid,
 
-        DATE_ADD(
-            DATE_ADD(
-                f.effective_from,
-                INTERVAL DATEDIFF(f.effective_to, f.effective_from)/2 DAY
-            ),
-            INTERVAL 182 DAY
+        dateadd(
+            day,
+            182,
+            dateadd(
+                day,
+                datediff(day, f.effective_from, f.effective_to) / 2,
+                f.effective_from
+            )
         ) as exposure_mid_freq,
 
-        DATE_ADD(
-            DATE_ADD(
-                s.effective_from,
-                INTERVAL DATEDIFF(s.effective_to, s.effective_from)/2 DAY
-            ),
-            INTERVAL 182 DAY
+        dateadd(
+            day,
+            182,
+            dateadd(
+                day,
+                datediff(day, s.effective_from, s.effective_to) / 2,
+                s.effective_from
+            )
         ) as exposure_mid_sev
 
     from base b
 
     left join freq_trend f
-      on b.state_grp = f.state
-     and b.risk_class_grp = f.risk_class
-     and b.vehicle_segment_grp = f.vehicle_segment
+      on b.state_grp = f.state_grp
+     and b.risk_class_grp = f.risk_class_grp
+     and b.vehicle_segment_grp = f.vehicle_segment_grp
 
     left join sev_trend s
-      on b.state_grp = s.state
-     and b.risk_class_grp = s.risk_class
-     and b.vehicle_segment_grp = s.vehicle_segment
+      on b.state_grp = s.state_grp
+     and b.risk_class_grp = s.risk_class_grp
+     and b.vehicle_segment_grp = s.vehicle_segment_grp
 ),
 
 trend_year as (
@@ -92,7 +97,7 @@ trend_year as (
           year(exposure_mid_sev) + dayofyear(exposure_mid_sev)/365.25
           - (accident_year + 0.5),
           0
-      ) as trend_years_sev,
+      ) as trend_years_sev
   from exposure_mid
 
 )
@@ -103,7 +108,7 @@ select
     risk_class_grp,
     vehicle_segment_grp,
     accident_year,
-    earned_exposure,
+    total_exposure,
 
     frequency * power(
         1 + coalesce(trend_freq, 0),
@@ -113,6 +118,6 @@ select
     severity * power(
         1 + coalesce(trend_sev, 0),
         trend_years_sev
-    ) as trended_severity,
+    ) as trended_severity
 
 from trend_year

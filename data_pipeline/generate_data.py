@@ -28,6 +28,7 @@ load_dotenv()
 
 SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USER")
 SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
+SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_ROLE")
 SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
 SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
 SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
@@ -36,6 +37,7 @@ PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
 if not all([
     SNOWFLAKE_USER,
     SNOWFLAKE_ACCOUNT,
+    SNOWFLAKE_ROLE,
     SNOWFLAKE_WAREHOUSE,
     SNOWFLAKE_DATABASE,
     SNOWFLAKE_SCHEMA,
@@ -67,6 +69,7 @@ private_key = p_key.private_bytes(
 conn = snowflake.connector.connect(
     user=SNOWFLAKE_USER,
     account=SNOWFLAKE_ACCOUNT,
+    role=SNOWFLAKE_ROLE,
     warehouse=SNOWFLAKE_WAREHOUSE,
     database=SNOWFLAKE_DATABASE,
     schema=SNOWFLAKE_SCHEMA,
@@ -74,6 +77,20 @@ conn = snowflake.connector.connect(
 )
 
 print("Connected to Snowflake securely using environment variables.")
+print(f"Using role={SNOWFLAKE_ROLE}, database={SNOWFLAKE_DATABASE}, schema={SNOWFLAKE_SCHEMA}")
+
+
+def load_dataframe_to_snowflake(df, table_name):
+    success, _, nrows, _ = write_pandas(
+        conn,
+        df,
+        table_name,
+        auto_create_table=True,
+        overwrite=True,
+    )
+    if not success:
+        raise RuntimeError(f"Failed to load data into {table_name}")
+    print(f"{table_name} loaded: {nrows} rows")
 
 # ─────────────────────────────────────────────────────────
 # CONFIG
@@ -219,7 +236,10 @@ def generate_claims(policies):
                 prev_paid = cum_paid
 
                 case_outstanding = ultimate - cum_paid
-                incurred = cum_paid + case_outstanding
+                rounded_incremental_paid = round(incremental_paid, 2)
+                rounded_cum_paid = round(cum_paid, 2)
+                rounded_case_outstanding = round(case_outstanding, 2)
+                incurred = rounded_cum_paid + rounded_case_outstanding
 
                 status = "closed" if pct == 1.0 else "open"
 
@@ -228,10 +248,10 @@ def generate_claims(policies):
                     "POLICY_ID": p["POLICY_ID"],
                     "LOSS_DATE": loss_date.date() if isinstance(loss_date, datetime) else loss_date,
                     "TRANSACTION_DATE": dev_date.date() if isinstance(dev_date, datetime) else dev_date,
-                    "INCREMENTAL_PAID": round(incremental_paid,2),
-                    "CUMULATIVE_PAID": round(cum_paid,2),
-                    "CASE_RESERVE": round(case_outstanding,2),
-                    "INCURRED": round(incurred,2),
+                    "INCREMENTAL_PAID": rounded_incremental_paid,
+                    "CUMULATIVE_PAID": rounded_cum_paid,
+                    "CASE_RESERVE": rounded_case_outstanding,
+                    "INCURRED": round(incurred, 2),
                     "STATUS": status
                 })
 
@@ -306,9 +326,9 @@ def main():
     claims.columns   = [c.upper() for c in claims.columns]
     rate_history.columns= [c.upper() for c in rate_history.columns]
 
-    write_pandas(conn, policies, 'POLICY')
-    write_pandas(conn, claims, 'CLAIM')
-    write_pandas(conn, rate_history, 'RATE_LEVEL_HISTORY')
+    load_dataframe_to_snowflake(policies, 'POLICY')
+    load_dataframe_to_snowflake(claims, 'CLAIM')
+    load_dataframe_to_snowflake(rate_history, 'RATE_LEVEL_HISTORY')
 
     policies.to_csv("dim_policy.csv", index=False)
     claims.to_csv("fact_claim_transaction.csv", index=False)

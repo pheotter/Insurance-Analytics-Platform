@@ -1,0 +1,7 @@
+dbt-core
+dbt-snowflake
+pandas
+openpyxl
+snowflake-connector-python[pandas]
+cryptography
+python-dotenv

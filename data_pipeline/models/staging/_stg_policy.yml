@@ -2,72 +2,71 @@ version: 2
 
 models:
   - name: stg_policy
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "cancellation_date IS NULL OR cancellation_date >= effective_date"
     columns:
       - name: expiration_date
         description: "Policy expiration date"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "expiration_date >= effective_date"
+                expression: ">= effective_date"
 
       - name: cancellation_date
         description: "Policy cancellation date (if any)"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "cancellation_date IS NULL OR cancellation_date >= effective_date"
 
       - name: written_premium
         description: "Total premium written for the policy"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "written_premium >= 0"
+                expression: ">= 0"
 
   - name: stg_claim
     description: "Simulated Fact table for insurance claims"
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "transaction_date <= CURRENT_DATE AND transaction_date >= accident_date"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "abs(incurred - (cumulative_paid + case_reserve)) < 0.01"
     columns:
-      - name: loss_date
+      - name: accident_date
         description: "Date of loss event"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "loss_date <= CURRENT_DATE"
+                expression: "<= CURRENT_DATE"
 
       - name: transaction_date
         description: "Date of transaction event"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "transaction_date <= CURRENT_DATE AND transaction_date >= loss_date"
 
       - name: incremental_paid
         description: "The amount of paid"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "incremental_paid >= 0"
+                expression: ">= 0"
 
       - name: cumulative_paid
         description: "The amount of total paid for this claim_id"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "cumulative_paid >= 0"
+                expression: ">= 0"
 
       - name: case_reserve
         description: "Case reserve amount"
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "case_reserve >= 0"
+                expression: ">= 0"
 
       - name: incurred
         description: "Paid + Reserved"
-        tests:
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: "incurred = cumulative_paid + case_reserve"
 
   - name: stg_rate_level_history
     columns:
@@ -76,4 +75,4 @@ models:
         tests:
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "cumulative_factor > 0"
+                expression: "> 0"

@@ -77,7 +77,7 @@ sources:
               - not_null
 
       - name: selected_ultimate
-        description: Ultimate losses for different method, accident year and segmentation
+        description: Candidate ultimate losses and claim counts for different methods, accident years and segmentations
         columns:
           - name: segmentation_version
             description: "which segmentation combination we decide to use. See more details in models/config/segmentation_config.sql"
@@ -139,6 +139,67 @@ sources:
 
           - name: comment
             description: "Describe how you calculated this ultimate loss or claim count"
+            tests:
+              - not_null
+
+      - name: ultimate_selection
+        description: Final selected ultimate method for each accident year, type and segmentation
+        columns:
+          - name: segmentation_version
+            description: "which segmentation combination we decide to use. See more details in models/config/segmentation_config.sql"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["v1","v2","v3"]
+
+          - name: type
+            description: "Ultimate loss or ultimate claim count"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["loss", "claim_count"]
+
+          - name: state
+            description: "states of the US"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
+
+          - name: risk_class
+            description: "risk class of the car"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
+
+          - name: vehicle_segment
+            description: "vehicle type"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["sedan", "suv", "truck", "sports", "ALL"]
+
+          - name: accident_year
+            description: "Accident Year"
+            tests:
+              - not_null
+
+          - name: method
+            description: "Selected ultimate method for that AY"
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["BF", "Cape_cod", "Judgements", "Chain_ladder"]
+
+          - name: comment
+            description: "Describe why this method was selected"
             tests:
               - not_null
 

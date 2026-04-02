@@ -31,10 +31,10 @@ select
     t.risk_class_grp,
     t.vehicle_segment_grp,
     t.accident_year,
-    t.cumulative_claim_count * c.cdf as ultimate_claim_count
+    t.cumulative_claim_count * coalesce(c.cdf, 1) as ultimate_claim_count
 
 from latest_claim_count_per_AY t
-join cdf c
+left join cdf c
   on t.development = c.development
  and t.state_grp = c.state_grp
  and t.risk_class_grp = c.risk_class_grp

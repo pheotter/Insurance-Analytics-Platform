@@ -2,3 +2,6 @@
 env/
 logs/
 output/
+airflow/review_packets/
+airflow/.env
+airflow/logs/

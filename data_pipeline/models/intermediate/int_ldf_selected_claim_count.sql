@@ -73,7 +73,7 @@ select
     case
         when method = 'avg' then avg_ldf_cnt
         when method = 'weighted' then weighted_ldf_cnt
-        when method = 'last3' then last3_ldf_cnt
+        when method = 'last3_weighted' then last3_ldf_cnt
         when method = 'other' then override_ldf_cnt
     end as selected_ldf_cnt
 

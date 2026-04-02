@@ -24,7 +24,7 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 - **Data warehouse**: Snowflake
 - **Transformation framework**: dbt
 - **Data simulation**: Python (pandas / numpy)
-- **(Planned) orchestration**: Airflow
+- **Orchestration**: Airflow
 
 ---
 
@@ -134,30 +134,50 @@ dbt run --vars '{segmentation_version: v1, loss_method: Chain_ladder, claim_coun
 
 ---
 
-## 7) Planned Airflow Automation
+## 7) Airflow Automation
 
-Goal: orchestrate the full `dbt + actuarial review + upload + dbt` cycle with auditability.
+The project now includes an Airflow DAG at `airflow/dags/insurance_actuarial_pipeline.py`.
 
-DAG stages:
+It orchestrates:
 
-1. `dbt_build_triangle`
-2. `export_triangle_for_actuary`
-3. `wait_for_ldf_selection_upload`
-4. `dbt_run_chain_ladder`
-5. `wait_for_selected_ultimate_upload`
-6. `dbt_run_with_method_vars`
-7. `wait_for_trend_selection_upload`
-8. `dbt_run_trended_metrics`
-9. `wait_for_expense_assumption_upload`
-10. `dbt_run_indication`
+1. `generate_simulated_data`
+2. `dbt_build_triangle`
+3. `open_ldf_review`
+4. `wait_for_ldf_selection_upload`
+5. `upload_ldf_selection`
+6. `dbt_run_chain_ladder`
+7. `open_selected_ultimate_review`
+8. `wait_for_selected_ultimate_upload`
+9. `upload_selected_ultimate`
+10. `dbt_run_with_method_vars`
+11. `open_trend_review`
+12. `wait_for_trend_selection_upload`
+13. `upload_trend_selection`
+14. `dbt_run_trended_metrics`
+15. `open_expense_review`
+16. `wait_for_expense_assumption_upload`
+17. `upload_expense_assumption`
+18. `dbt_run_indication`
 
-Metadata for each manual upload:
-- `run_id`
-- `uploaded_at`
-- `uploaded_by`
-- `is_approved`
+How the manual checkpoints work:
 
-This makes Airflow sensors robust and traceable.
+- Airflow writes a review packet into `airflow/review_packets/`
+- You update the corresponding Excel workbook in `data_pipeline/`
+- The sensor continues only after the workbook modification time is newer than the checkpoint open time
+- The DAG uploads only the workbook for that checkpoint back to Snowflake
+
+Supporting script:
+
+- `data_pipeline/upload_actuarial_inputs.py`
+  - Upload all workbooks: `python upload_actuarial_inputs.py`
+  - Upload one workbook: `python upload_actuarial_inputs.py --file trend_selection.xlsx`
+
+Airflow setup notes:
+
+- A Docker Compose startup environment is included under `airflow/`
+- The DAG now reads paths and runtime settings from Airflow Variables instead of hardcoding them
+- Docker injects those Variables through `AIRFLOW_VAR_*` environment variables
+- Ensure Snowflake environment variables are present in `airflow/.env`
 
 ---
 

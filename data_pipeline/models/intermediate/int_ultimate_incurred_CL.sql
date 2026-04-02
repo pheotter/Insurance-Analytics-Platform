@@ -31,10 +31,10 @@ select
     t.risk_class_grp,
     t.vehicle_segment_grp,
     t.accident_year,
-    t.cumulative_incurred * c.cdf as ultimate_loss
+    t.cumulative_incurred * coalesce(c.cdf, 1) as ultimate_loss
 
 from latest_loss_per_AY t
-join cdf c
+left join cdf c
   on t.development = c.development
  and t.state_grp = c.state_grp
  and t.risk_class_grp = c.risk_class_grp
