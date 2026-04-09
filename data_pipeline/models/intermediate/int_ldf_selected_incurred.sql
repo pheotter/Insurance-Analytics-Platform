@@ -35,26 +35,26 @@ combined as (
         s.vehicle_segment_grp,
         s.development,
         s.method,
-        s.ldf as override_ldf,
+        s.ldf as override_ldf_incurred,
 
-        a.avg_ldf,
-        w.weighted_ldf,
-        l.last3_ldf
+        a.avg_ldf_incurred,
+        w.weighted_ldf_incurred,
+        l.last3_ldf_incurred
 
     from sel s
-    left join avg_ldf a
+    join avg_ldf a
         on s.state_grp = a.state_grp
        and s.risk_class_grp = a.risk_class_grp
        and s.vehicle_segment_grp = a.vehicle_segment_grp
        and s.development = a.development
 
-    left join weighted_ldf w
+    join weighted_ldf w
         on s.state_grp = w.state_grp
        and s.risk_class_grp = w.risk_class_grp
        and s.vehicle_segment_grp = w.vehicle_segment_grp
        and s.development = w.development
 
-    left join last3_ldf l
+    join last3_ldf l
         on s.state_grp = l.state_grp
        and s.risk_class_grp = l.risk_class_grp
        and s.vehicle_segment_grp = l.vehicle_segment_grp
@@ -70,10 +70,10 @@ select
     development,
 
     case
-        when method = 'avg' then avg_ldf
-        when method = 'weighted' then weighted_ldf
-        when method = 'last3_weighted' then last3_ldf
-        when method = 'other' then override_ldf
-    end as selected_ldf
+        when method = 'avg' then avg_ldf_incurred
+        when method = 'weighted' then weighted_ldf_incurred
+        when method = 'last3_weighted' then last3_ldf_incurred
+        when method = 'other' then override_ldf_incurred
+    end as selected_ldf_incurred
 
 from combined

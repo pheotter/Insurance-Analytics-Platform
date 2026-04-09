@@ -4,7 +4,7 @@ with triangle as (
 
 sel as (
     select *
-    from {{ ref('stg_ldf_selection_table_incurred') }}
+    from {{ ref('stg_ldf_selection_table_paid') }}
     where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 ),
 
@@ -29,9 +29,11 @@ ldf as (
       t1.vehicle_segment_grp,
       t1.development,
 
-      sum(t2.cumulative_incurred)
-      / nullif(sum(t1.cumulative_incurred),0)
-      as weighted_ldf_incurred
+      coalesce(
+        sum(t2.cumulative_paid)
+        / nullif(sum(t1.cumulative_paid),0)
+      , 1)
+      as weighted_ldf_paid
 
   from filtered_triangle t1
   join filtered_triangle t2

@@ -7,7 +7,7 @@ with latest_loss_per_AY as (
         vehicle_segment_grp,
         accident_year,
         development,
-        cumulative_incurred,
+        cumulative_paid,
         row_number() over (
             partition by state_grp, risk_class_grp, vehicle_segment_grp,
                   accident_year
@@ -21,7 +21,7 @@ with latest_loss_per_AY as (
 cdf as (
 
     select *
-    from {{ ref('int_cdf_incurred') }}
+    from {{ ref('int_cdf_paid') }}
 
 )
 
@@ -31,7 +31,7 @@ select
     t.risk_class_grp,
     t.vehicle_segment_grp,
     t.accident_year,
-    t.cumulative_incurred * c.cdf as ultimate_loss
+    t.cumulative_paid * c.cdf as ultimate_loss
 
 from latest_loss_per_AY t
 join cdf c

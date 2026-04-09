@@ -12,7 +12,7 @@ filtered_link_ratio as (
 
     select l.*
     from link_ratio l
-    left join sel s
+    join sel s
         on l.development = s.development
         and l.state_grp = s.state_grp
         and l.risk_class_grp = s.risk_class_grp
@@ -29,7 +29,7 @@ ldf as (
       f.vehicle_segment_grp,
       f.development,
 
-      avg(link_ratio) as avg_ldf
+      coalesce(avg(link_ratio_incurred), 1) as avg_ldf_incurred
 
   from filtered_link_ratio f
 

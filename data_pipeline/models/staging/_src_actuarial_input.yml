@@ -23,7 +23,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ["incurred", "claim_count"]
+                    values: ["paid", "incurred", "claim_count"]
 
           - name: state
             description: "states of the US"
@@ -49,7 +49,7 @@ sources:
                   arguments:
                     values: ["sedan", "suv", "truck", "sports", "ALL"]
 
-          - name: developement
+          - name: development
             description: "developement"
             tests:
               - not_null
@@ -135,7 +135,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ["BF", "Cape_cod", "Judgements"]
+                    values: ["BF", "Cape_cod", "Judgement"]
 
           - name: comment
             description: "Describe how you calculated this ultimate loss or claim count"
@@ -196,7 +196,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ["BF", "Cape_cod", "Judgements", "Chain_ladder"]
+                    values: ["BF", "Cape_cod", "Judgement", "Chain_ladder"]
 
           - name: comment
             description: "Describe why this method was selected"
@@ -274,22 +274,6 @@ sources:
               - accepted_values:
                   arguments:
                     values: ["CA","TX","FL","NY","IL","PA","OH","GA","NC","MI","ALL"]
-
-          - name: risk_class
-            description: "risk class of the car"
-            tests:
-              - not_null
-              - accepted_values:
-                  arguments:
-                    values: ["preferred", "standard", "nonstandard", "commercial", "ALL"]
-
-          - name: vehicle_segment
-            description: "vehicle type"
-            tests:
-              - not_null
-              - accepted_values:
-                  arguments:
-                    values: ["sedan", "suv", "truck", "sports", "ALL"]
 
           - name: fixed_expense_per_exposure
             description: "Fiexed expense per exposure"

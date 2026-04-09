@@ -1,7 +1,7 @@
 with sel as (
 
     select *
-    from {{ ref('stg_ldf_selection_table_claim_count') }}
+    from {{ ref('stg_ldf_selection_table_paid') }}
     where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 
 ),
@@ -9,14 +9,14 @@ with sel as (
 avg_ldf as (
 
     select *
-    from {{ ref('int_ldf_avg_claim_count') }}
+    from {{ ref('int_ldf_avg_paid') }}
 
 ),
 
 weighted_ldf as (
 
     select *
-    from {{ ref('int_ldf_weighted_claim_count') }}
+    from {{ ref('int_ldf_weighted_paid') }}
 
 ),
 
@@ -35,14 +35,13 @@ combined as (
         s.vehicle_segment_grp,
         s.development,
         s.method,
-        s.ldf as override_ldf_cnt,
+        s.ldf as override_ldf_paid,
 
-        a.avg_ldf_cnt,
-        w.weighted_ldf_cnt,
-        l.last3_ldf_cnt
+        a.avg_ldf_paid,
+        w.weighted_ldf_paid,
+        l.last3_ldf_paid
 
     from sel s
-
     join avg_ldf a
         on s.state_grp = a.state_grp
        and s.risk_class_grp = a.risk_class_grp
@@ -71,10 +70,10 @@ select
     development,
 
     case
-        when method = 'avg' then avg_ldf_cnt
-        when method = 'weighted' then weighted_ldf_cnt
-        when method = 'last3_weighted' then last3_ldf_cnt
-        when method = 'other' then override_ldf_cnt
-    end as selected_ldf_cnt
+        when method = 'avg' then avg_ldf_paid
+        when method = 'weighted' then weighted_ldf_paid
+        when method = 'last3_weighted' then last3_ldf_paid
+        when method = 'other' then override_ldf_paid
+    end as selected_ldf_paid
 
 from combined

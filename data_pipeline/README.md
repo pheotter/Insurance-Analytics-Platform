@@ -67,6 +67,21 @@ python generate_ultimate_selection_template.py --segmentation-version v3 --outpu
 python export_ultimate_selection_review.py --output ../airflow/review_packets/ultimate_selection/review.xlsx
 ```
 
+## Recommended dbt run patterns
+
+- Build the pricing output chain:
+```bash
+dbt run --select fct_frequency_severity+
+```
+
+- Build the controls layer:
+```bash
+dbt run --select mart_control_totals_financial_summary mart_control_tolerance_by_metric mart_reconciliation_by_segment mart_assumption_impact_reconciliation mart_reserve_pricing_movement_attribution
+```
+
+- Important note:
+  `mart_reserve_pricing_movement_attribution` depends on `mart_assumption_impact_reconciliation`, so it should be selected together with that model unless the dependency has already been built in the target schema.
+
 ## dbt notes
 
 - `segmentation_version` is controlled through dbt vars and Airflow Variables.

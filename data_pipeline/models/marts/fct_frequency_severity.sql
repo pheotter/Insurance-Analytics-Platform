@@ -6,8 +6,8 @@ select
     c.accident_year,
     c.method as claim_count_method,
     l.method as loss_method,
-    e.total_exposure,
-    c.ultimate_claim_count / nullif(e.total_exposure,0) as frequency,
+    e.total_earned_exposure,
+    c.ultimate_claim_count / nullif(e.total_earned_exposure,0) as frequency,
     l.ultimate_loss / nullif(c.ultimate_claim_count,0)  as severity
 
 from {{ ref('fct_selected_ultimate_claim_count') }} c

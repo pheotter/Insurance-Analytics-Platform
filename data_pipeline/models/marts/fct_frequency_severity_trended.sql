@@ -9,7 +9,7 @@ trend as (
 
     select *
     from {{ ref('stg_trend_selection') }}
-    where segmentation_version = '{{ var("segmentation_version") }}'
+    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 
 ),
 
@@ -36,7 +36,7 @@ exposure_mid as (
         b.risk_class_grp,
         b.vehicle_segment_grp,
         b.accident_year,
-        b.total_exposure,
+        b.total_earned_exposure,
 
         b.frequency,
         b.severity,
@@ -108,7 +108,7 @@ select
     risk_class_grp,
     vehicle_segment_grp,
     accident_year,
-    total_exposure,
+    total_earned_exposure,
 
     frequency * power(
         1 + coalesce(trend_freq, 0),

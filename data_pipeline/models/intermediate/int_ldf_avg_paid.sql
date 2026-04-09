@@ -4,7 +4,7 @@ with link_ratio as (
 
 sel as (
     select *
-    from {{ ref('stg_ldf_selection_table_claim_count') }}
+    from {{ ref('stg_ldf_selection_table_paid') }}
     where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 ),
 
@@ -29,7 +29,7 @@ ldf as (
       f.vehicle_segment_grp,
       f.development,
 
-      coalesce(avg(link_ratio_cnt), 1) as avg_ldf_cnt
+      coalesce(avg(link_ratio_paid), 1) as avg_ldf_paid
 
   from filtered_link_ratio f
 

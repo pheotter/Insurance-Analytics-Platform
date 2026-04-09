@@ -54,13 +54,26 @@ def parse_args():
 def fetch_review_data(conn):
     cursor = conn.cursor()
     try:
-        for table_name in ["INT_ULTIMATE_INCURRED_CL", "INT_ULTIMATE_CLAIM_COUNT_CL"]:
+        for table_name in [
+            "INT_ULTIMATE_PAID_CL",
+            "INT_ULTIMATE_INCURRED_CL",
+            "INT_ULTIMATE_CLAIM_COUNT_CL",
+        ]:
             count_query = f"select count(*) from {table_name}"
             count = cursor.execute(count_query).fetchone()[0]
             print(f"{table_name} row count: {count}")
 
         query = """
-            with loss as (
+            with paid_loss as (
+                select
+                    state_grp,
+                    risk_class_grp,
+                    vehicle_segment_grp,
+                    accident_year,
+                    ultimate_loss
+                from INT_ULTIMATE_PAID_CL
+            ),
+            reported_loss as (
                 select
                     state_grp,
                     risk_class_grp,
@@ -79,18 +92,24 @@ def fetch_review_data(conn):
                 from INT_ULTIMATE_CLAIM_COUNT_CL
             )
             select
-                l.state_grp,
-                l.risk_class_grp,
-                l.vehicle_segment_grp,
-                l.accident_year,
-                l.ultimate_loss as reported_ultimate_loss,
+                coalesce(r.state_grp, p.state_grp) as state_grp,
+                coalesce(r.risk_class_grp, p.risk_class_grp) as risk_class_grp,
+                coalesce(r.vehicle_segment_grp, p.vehicle_segment_grp) as vehicle_segment_grp,
+                coalesce(r.accident_year, p.accident_year) as accident_year,
+                p.ultimate_loss as paid_ultimate_loss,
+                r.ultimate_loss as reported_ultimate_loss,
                 cc.ultimate_claim_count as reported_ultimate_claim_count
-            from loss l
+            from reported_loss r
+            full outer join paid_loss p
+              on r.state_grp = p.state_grp
+             and r.risk_class_grp = p.risk_class_grp
+             and r.vehicle_segment_grp = p.vehicle_segment_grp
+             and r.accident_year = p.accident_year
             left join claim_count cc
-              on l.state_grp = cc.state_grp
-             and l.risk_class_grp = cc.risk_class_grp
-             and l.vehicle_segment_grp = cc.vehicle_segment_grp
-             and l.accident_year = cc.accident_year
+              on coalesce(r.state_grp, p.state_grp) = cc.state_grp
+             and coalesce(r.risk_class_grp, p.risk_class_grp) = cc.risk_class_grp
+             and coalesce(r.vehicle_segment_grp, p.vehicle_segment_grp) = cc.vehicle_segment_grp
+             and coalesce(r.accident_year, p.accident_year) = cc.accident_year
             order by 1, 2, 3, 4
         """
         cursor.execute(query)
@@ -103,7 +122,8 @@ def fetch_review_data(conn):
     if df.empty:
         raise ValueError(
             "No rows found for ultimate review export. "
-            "Check whether dbt_run_chain_ladder populated INT_ULTIMATE_INCURRED_CL and INT_ULTIMATE_CLAIM_COUNT_CL."
+            "Check whether dbt_run_chain_ladder populated INT_ULTIMATE_PAID_CL, "
+            "INT_ULTIMATE_INCURRED_CL, and INT_ULTIMATE_CLAIM_COUNT_CL."
         )
     return df
 
@@ -156,6 +176,7 @@ def export_workbook(df, output_path):
             segment_df = segment_df.rename(
                 columns={
                     "ACCIDENT_YEAR": "accident_year",
+                    "PAID_ULTIMATE_LOSS": "paid_ultimate_loss",
                     "REPORTED_ULTIMATE_LOSS": "reported_ultimate_loss",
                     "REPORTED_ULTIMATE_CLAIM_COUNT": "reported_ultimate_claim_count",
                 }
@@ -163,6 +184,7 @@ def export_workbook(df, output_path):
             segment_df[
                 [
                     "accident_year",
+                    "paid_ultimate_loss",
                     "reported_ultimate_loss",
                     "reported_ultimate_claim_count",
                 ]

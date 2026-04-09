@@ -1,7 +1,7 @@
 with ldf as (
 
     select *
-    from {{ ref('int_ldf_selected_incurred') }}
+    from {{ ref('int_ldf_selected_paid') }}
 
 )
 
@@ -11,7 +11,7 @@ select
     vehicle_segment_grp,
     development,
     exp(
-        sum(ln(selected_ldf_incurred))
+        sum(ln(selected_ldf_paid))
         over (
           partition by
             state_grp,

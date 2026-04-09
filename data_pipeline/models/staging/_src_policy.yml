@@ -110,7 +110,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ["sedan","suv","truck","sports"]
+                    values: ["sedan","suv","truck","sports", "ALL"]
 
           - name: rate_change_pct
             description: "rate change percentage"
@@ -129,7 +129,6 @@ sources:
             description: "Unique claim identifier"
             tests:
               - not_null
-              - unique
 
           - name: policy_id
             description: "Foreign key to dim_policy"

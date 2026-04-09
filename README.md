@@ -205,15 +205,79 @@ Airflow setup notes:
 
 ---
 
-## 8) Gaps and Next Steps
+## 8) Next Steps
 
-- Some SQL models still need naming and syntax consistency cleanup.
-- Data quality coverage can be expanded (null/range/relationship/freshness tests).
-- A visualization layer (e.g., Streamlit/BI) can be added for indication and sensitivity analysis.
+The next set of improvements for this platform would focus on making it more production-oriented and more actuarially robust:
+
+1. **Deeper data quality and reconciliation**
+   - Add intermediate-layer reconciliation checks
+   - Add stage-to-stage row count and amount checks
+   - Add control totals and financial tie-outs
+   - Add triangle monotonicity checks
+   - Add LDF / CDF reasonableness checks
+   - Add selected-assumption coverage checks
+   - Add ultimate output reconciliation checks
+
+2. **Stronger assumption management**
+   - Add assumption versioning
+   - Track who changed what and when
+   - Store timestamp, author, and rationale
+   - Add approval states
+   - Compare current versus prior assumption versions
+   - Generate assumption diffs before upload
+
+3. **Results consumption layer**
+   - Add a lightweight UI or dashboard for review and analysis
+   - Show triangle review pages
+   - Compare ultimate candidates across methods
+   - Summarize selected methods by accident year
+   - Add trend review charts
+   - Add pure premium and indication waterfall views
+   - Support segmentation comparison
+
+4. **Broader actuarial method support**
+   - Expand BF decomposition
+   - Make Cape Cod implementation more explicit
+   - Add paid-versus-reported comparison
+   - Add tail factor logic
+   - Add clearer selection diagnostics
+   - Support calendar-effect and exposure-trend splits
+   - Support scenario comparison across methods
+
+5. **More production-grade engineering**
+   - Add a REST API layer for assumptions and results
+   - Add a FastAPI service layer
+   - Improve containerization and deployment setup
+   - Add CI/CD checks
+   - Add monitoring and alerting
+   - Add role-based access design
+   - Add logging and audit trails
 
 ---
 
-## 9) Skills Demonstrated
+## 9) Controls Layer
+
+In addition to dbt tests, the project also includes a controls and reconciliation layer implemented as dbt marts. These models are meant to explain differences, quantify impacts, and support exception reporting rather than just returning pass/fail results.
+
+- `mart_control_totals_financial_summary`
+  Summarizes key source-versus-target control totals such as premium, exposure, paid, incurred, and claim count.
+- `mart_control_tolerance_by_metric`
+  Applies metric-specific tolerances and classifies each control as `PASS`, `WARN`, or `FAIL`.
+- `mart_reconciliation_by_segment`
+  Breaks reconciliation results down by segment to help isolate where differences are coming from.
+- `mart_assumption_impact_reconciliation`
+  Compares selected actuarial assumptions against Chain Ladder baselines to show assumption-driven impacts.
+- `mart_reserve_pricing_movement_attribution`
+  Separates movement into reserve-method impact, trend impact, and expense/profit impact to support result explainability.
+
+These models complement the dbt test suite:
+
+- dbt tests are used for rule enforcement and pass/fail validation
+- control marts are used for diagnostics, explanation, and future dashboarding / monitoring
+
+---
+
+## 10) Skills Demonstrated
 
 - SQL / dbt modeling
 - Actuarial pricing workflow design (triangle, LDF/CDF, ultimate, indication)
@@ -222,6 +286,6 @@ Airflow setup notes:
 
 ---
 
-## 10) License
+## 11) License
 
 This project is for portfolio/demo purposes.

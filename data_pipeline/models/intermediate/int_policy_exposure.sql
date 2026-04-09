@@ -79,6 +79,7 @@ policy_earned as (
         vehicle_segment,
         calendar_year,
 
+        term_factor,
         term_factor * year_fraction as earned_exposure,
         written_premium * year_fraction as earned_premium
 
@@ -99,7 +100,7 @@ select
     {{ segmentation_grouping('vehicle_segment', 'cfg.use_vehicle_segment') }} as vehicle_segment_grp,
 
     calendar_year,
-    sum(earned_exposure) as total_exposure,
+    sum(earned_exposure) as total_earned_exposure,
     sum(earned_premium) as total_earned_premium
 
 from policy_earned
