@@ -58,8 +58,7 @@ trend_frequency as (
         vehicle_segment_grp,
         annual_trend as selected_frequency_trend
     from {{ ref('stg_trend_selection') }}
-    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
-      and trend_type = 'frequency'
+    where trend_type = 'frequency'
 
 ),
 
@@ -71,8 +70,7 @@ trend_severity as (
         vehicle_segment_grp,
         annual_trend as selected_severity_trend
     from {{ ref('stg_trend_selection') }}
-    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
-      and trend_type = 'severity'
+    where trend_type = 'severity'
 
 )
 

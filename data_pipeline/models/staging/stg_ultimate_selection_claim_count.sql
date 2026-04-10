@@ -10,3 +10,4 @@ select
 
 from {{ source('actuarial_input', 'ultimate_selection') }}
 where type = 'claim_count'
+and segmentation_version = '{{ var("segmentation_version", "v3") }}'

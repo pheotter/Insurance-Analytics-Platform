@@ -8,8 +8,8 @@ select
     vehicle_segment_grp,
     accident_year,
     development,
-    
-    lead(cumulative_incurred) over (
+
+    lead(cumulative_paid) over (
         partition by state_grp, risk_class_grp, vehicle_segment_grp,
                      accident_year
         order by development

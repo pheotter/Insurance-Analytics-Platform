@@ -1,22 +1,22 @@
 with sel as (
 
     select *
-    from {{ ref('stg_ldf_selection_table_incurred') }}
-    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
+    from {{ ref('stg_ldf_selection_table') }}
+    where triangle_type = 'incurred'
 
 ),
 
 avg_ldf as (
 
     select *
-    from {{ ref('int_ldf_avg_incurred') }}
+    from {{ ref('int_ldf_avg') }}
 
 ),
 
 weighted_ldf as (
 
     select *
-    from {{ ref('int_ldf_weighted_incurred') }}
+    from {{ ref('int_ldf_weighted') }}
 
 ),
 

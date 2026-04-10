@@ -91,6 +91,7 @@ def safe_sheet_name(index, segment_row):
 def write_segment_sheet(writer, segment_key, segment_df, sheet_name):
     paid_triangle = build_triangle(segment_df, "CUMULATIVE_PAID")
     reported_triangle = build_triangle(segment_df, "CUMULATIVE_INCURRED")
+    claim_count_triangle = build_triangle(segment_df, "CUMULATIVE_CLAIM_COUNT")
 
     segment_meta = pd.DataFrame(
         {
@@ -111,6 +112,14 @@ def write_segment_sheet(writer, segment_key, segment_df, sheet_name):
     )
     reported_triangle.to_excel(
         writer, sheet_name=sheet_name, index=False, startrow=reported_start + 1
+    )
+
+    claim_count_start = reported_start + len(reported_triangle) + 5
+    pd.DataFrame({"cumulative_claim_count_triangle": []}).to_excel(
+        writer, sheet_name=sheet_name, index=False, startrow=claim_count_start
+    )
+    claim_count_triangle.to_excel(
+        writer, sheet_name=sheet_name, index=False, startrow=claim_count_start + 1
     )
 
 

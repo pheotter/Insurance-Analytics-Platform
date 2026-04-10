@@ -9,7 +9,6 @@ trend as (
 
     select *
     from {{ ref('stg_trend_selection') }}
-    where segmentation_version = '{{ var("segmentation_version", "v3") }}'
 
 ),
 

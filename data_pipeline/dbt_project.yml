@@ -31,14 +31,33 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   data_pipeline:
-    +database: dbt_db
-    +materialized: view
 
     staging:
       +materialized: view
 
     intermediate:
       +materialized: table
+      +tags: ["intermediate"]
+      data:
+        +tags: ["intermediate", "data"]
+      triangle:
+        +tags: ["intermediate", "triangle"]
+      ldf:
+        +tags: ["intermediate", "ldf"]
+      cdf:
+        +tags: ["intermediate", "cdf"]
+      ultimate:
+        +tags: ["intermediate", "ultimate"]
 
     marts:
       +materialized: table
+      ultimate:
+        +tags: ["mart", "ultiamte"]
+      exposure:
+        +tags: ["mart", "exposure"]
+      frequency_severity:
+        +tags: ["mart", "frequency_severity"]
+      pure_premium:
+        +tags: ["mart", "pure_premium"]
+      indicated_premium:
+        +tags: ["mart", "indicated_premium"]

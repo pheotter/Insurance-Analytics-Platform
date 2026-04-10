@@ -14,4 +14,4 @@ summary as (
 select *
 from summary
 where total_rows > 0
-  and valid_rows / total_rows::float < 0.90
+  and valid_rows / total_rows::float < 1.00

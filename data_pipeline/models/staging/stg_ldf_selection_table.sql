@@ -8,9 +8,7 @@ select
     development,
     ldf,
     method,
-    ay_from,
-    ay_to,
     description
 
 from {{ source('actuarial_input', 'ldf_selection_table') }}
-where triangle_type = 'paid'
+where segmentation_version = '{{ var("segmentation_version", "v3") }}'

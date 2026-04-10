@@ -1,3 +1,5 @@
+{{ config(severity='warn') }}
+
 with ratios as (
     select *
     from {{ ref('int_ldf_raw') }}

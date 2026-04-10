@@ -9,5 +9,6 @@ select
     effective_from,
     effective_to,
     description
-    
+
 from {{ source('actuarial_input', 'trend_selection') }}
+where segmentation_version = '{{ var("segmentation_version", "v3") }}'

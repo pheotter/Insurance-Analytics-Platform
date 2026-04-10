@@ -65,12 +65,6 @@ sources:
                   arguments:
                     values: ["last3_weighted", "avg", "weighted", "other"]
 
-          - name: ay_from
-            description: "the accident year of ldf calculation method you use starts from"
-
-          - name: ay_to
-            description: "the accident year of ldf calculation method you use ends"
-
           - name: description
             description: "Description how to choose the ldf"
             tests:
@@ -196,7 +190,7 @@ sources:
               - not_null
               - accepted_values:
                   arguments:
-                    values: ["BF", "Cape_cod", "Judgement", "Chain_ladder"]
+                    values: ["BF", "Cape_cod", "Judgement", "Chain_ladder", "Chain_ladder_incurred", "Chain_ladder_paid"]
 
           - name: comment
             description: "Describe why this method was selected"
@@ -267,6 +261,10 @@ sources:
       - name: expense_assumption
         description: expense assumptions
         columns:
+          - name: pricing_version
+            description: "Pricing scenario or filing version that these expense assumptions apply to"
+            tests:
+              - not_null
           - name: state
             description: "states of the US"
             tests:
@@ -294,3 +292,97 @@ sources:
             description: "Target profit ratio"
             tests:
               - not_null
+          - name: target_loss_ratio
+            description: "Target loss ratio for indication"
+            tests:
+              - not_null
+
+      - name: assumption_version
+        description: Metadata table for uploaded assumption versions and submission context
+        columns:
+          - name: assumption_set_id
+            description: "Unique identifier for one uploaded assumption set"
+            tests:
+              - not_null
+
+          - name: assumption_type
+            description: "Type of assumption workbook uploaded"
+            tests:
+              - not_null
+
+          - name: version_sequence
+            description: "Auto-incrementing numeric version within each assumption type"
+
+          - name: version_label
+            description: "User-facing version label for the upload"
+
+          - name: uploaded_at
+            description: "Timestamp when this assumption version was registered"
+
+          - name: uploaded_by
+            description: "Author associated with this upload"
+
+          - name: upload_comment
+            description: "Free-text rationale or note captured during upload"
+
+          - name: dag_run_id
+            description: "Airflow DAG run id associated with this upload, when applicable"
+
+      - name: assumption_change_log
+        description: Field-level and row-level diff log between the prior and current uploaded assumption versions
+        columns:
+          - name: assumption_set_id
+            description: "Unique identifier linking change rows back to the uploaded assumption version"
+            tests:
+              - not_null
+
+          - name: assumption_type
+            description: "Type of assumption workbook uploaded"
+            tests:
+              - not_null
+
+          - name: row_key
+            description: "Natural-key-based identifier for the changed row"
+
+          - name: change_type
+            description: "Whether the row or field was added, removed, or updated"
+
+          - name: column_name
+            description: "Changed column name or __row__ for row-level add/remove events"
+
+          - name: old_value
+            description: "Prior value before the upload"
+
+          - name: new_value
+            description: "Current value after the upload"
+
+          - name: changed_at
+            description: "Timestamp when the diff was recorded"
+
+      - name: pipeline_run_metadata
+        description: Mapping between pipeline runs and the assumption versions they consumed or registered
+        columns:
+          - name: pipeline_run_metadata_id
+            description: "Unique identifier for the metadata record"
+            tests:
+              - not_null
+
+          - name: assumption_set_id
+            description: "Assumption version linked to this pipeline run metadata row"
+            tests:
+              - not_null
+
+          - name: assumption_type
+            description: "Type of assumption workbook associated with the run"
+
+          - name: dag_id
+            description: "Airflow DAG id"
+
+          - name: dag_run_id
+            description: "Airflow DAG run id"
+
+          - name: task_id
+            description: "Airflow task id that registered the upload"
+            
+          - name: registered_at
+            description: "Timestamp when the pipeline metadata row was written"

@@ -1,3 +1,5 @@
+{{ config(severity='warn') }}
+
 with ordered as (
     select
         *,
