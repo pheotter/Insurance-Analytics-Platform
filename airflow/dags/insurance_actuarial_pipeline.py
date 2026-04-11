@@ -25,7 +25,7 @@ REVIEW_PACKET_DIR = get_path_variable("review_packet_dir", PROJECT_ROOT / "airfl
 PYTHON_BIN = Variable.get("pipeline_python_bin", default_var=os.getenv("PIPELINE_PYTHON_BIN", "python"))
 DBT_BIN = Variable.get("dbt_bin", default_var=os.getenv("DBT_BIN", "dbt"))
 DEFAULT_SEGMENTATION_VERSION = Variable.get("segmentation_version", default_var="v3")
-WAIT_TIMEOUT_SECONDS = int(Variable.get("review_wait_timeout_seconds", default_var=str(60 * 60 * 24)))
+WAIT_TIMEOUT_SECONDS = int(Variable.get("review_wait_timeout_seconds", default_var=str(60))) #60 * 60 * 24
 WAIT_POKE_INTERVAL_SECONDS = int(Variable.get("review_poke_interval_seconds", default_var="60"))
 ASSUMPTION_UPLOAD_AUTHOR = Variable.get(
     "assumption_upload_author",
@@ -35,6 +35,10 @@ ASSUMPTION_VERSION_PREFIX = Variable.get(
     "assumption_version_prefix",
     default_var=os.getenv("ASSUMPTION_VERSION_PREFIX", "airflow"),
 )
+ALERT_EMAILS = Variable.get(
+    "alert_emails",
+    default_var=os.getenv("ALERT_EMAIL", None)
+).split(",")
 
 TRIANGLE_BUILD_MODELS = [
     "segmentation_config",
@@ -222,6 +226,8 @@ default_args = {
     "depends_on_past": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    "email_on_failure": True,
+    "email": ALERT_EMAILS,
 }
 
 
@@ -253,6 +259,7 @@ with DAG(
         task_id="dbt_build_triangle_models",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": TRIANGLE_BUILD_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     # -----------------------
@@ -290,6 +297,7 @@ with DAG(
 
     wait_for_ldf_selection_upload = PythonSensor(
         task_id="wait_for_ldf_selection_upload",
+        retries=0,
         **sensor_kwargs("ldf_selection_table.xlsx", "open_ldf_review"),
     )
 
@@ -310,6 +318,7 @@ with DAG(
         task_id="dbt_build_chain_ladder",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": CHAIN_LADDER_MODELS},
+        execution_timeout=timedelta(minutes=20),
     )
 
     export_ultimate_for_review = PythonOperator(
@@ -341,6 +350,7 @@ with DAG(
 
     wait_for_selected_ultimate_upload = PythonSensor(
         task_id="wait_for_selected_ultimate_upload",
+        retries=0,
         **sensor_kwargs("selected_ultimate.xlsx", "open_selected_ultimate_review"),
     )
 
@@ -361,6 +371,7 @@ with DAG(
         task_id="dbt_build_ultimate_candidates",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": ULTIMATE_CANDIDATE_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     export_ultimate_selection_for_review = PythonOperator(
@@ -406,6 +417,7 @@ with DAG(
 
     wait_for_ultimate_selection_upload = PythonSensor(
         task_id="wait_for_ultimate_selection_upload",
+        retries=0,
         **sensor_kwargs("ultimate_selection.xlsx", "open_ultimate_selection_review"),
     )
 
@@ -426,6 +438,7 @@ with DAG(
         task_id="dbt_build_selected_ultimate_metrics",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": SELECTED_ULTIMATE_METRICS_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     export_frequency_severity_for_review = PythonOperator(
@@ -456,6 +469,7 @@ with DAG(
 
     wait_for_trend_selection_upload = PythonSensor(
         task_id="wait_for_trend_selection_upload",
+        retries=0,
         **sensor_kwargs("trend_selection.xlsx", "open_trend_review"),
     )
 
@@ -476,6 +490,7 @@ with DAG(
         task_id="dbt_build_trended_metrics",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": TRENDED_METRICS_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     open_expense_review = PythonOperator(
@@ -492,6 +507,7 @@ with DAG(
 
     wait_for_expense_assumption_upload = PythonSensor(
         task_id="wait_for_expense_assumption_upload",
+        retries=0,
         **sensor_kwargs("expense_assumption.xlsx", "open_expense_review"),
     )
 
@@ -512,12 +528,14 @@ with DAG(
         task_id="dbt_build_indication",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": INDICATION_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     dbt_build_controls_summary = PythonOperator(
         task_id="dbt_build_controls_summary",
         python_callable=run_dbt_build,
         op_kwargs={"model_names": CONTROL_SUMMARY_MODELS},
+        execution_timeout=timedelta(minutes=15),
     )
 
     (

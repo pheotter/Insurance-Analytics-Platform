@@ -259,6 +259,7 @@ The next set of improvements for this platform would focus on making it more pro
    - Support scenario comparison across methods
    - Support valuation date with monthly or quarterly
    - Incorportate [chainladder-python] package(https://chainladder-python.readthedocs.io/en/latest/intro.html)
+   - Add tail factor
 
 3. **More production-grade engineering**
    - Add a REST API layer for assumptions and results
