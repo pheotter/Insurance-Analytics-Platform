@@ -25,7 +25,7 @@ REVIEW_PACKET_DIR = get_path_variable("review_packet_dir", PROJECT_ROOT / "airfl
 PYTHON_BIN = Variable.get("pipeline_python_bin", default_var=os.getenv("PIPELINE_PYTHON_BIN", "python"))
 DBT_BIN = Variable.get("dbt_bin", default_var=os.getenv("DBT_BIN", "dbt"))
 DEFAULT_SEGMENTATION_VERSION = Variable.get("segmentation_version", default_var="v3")
-WAIT_TIMEOUT_SECONDS = int(Variable.get("review_wait_timeout_seconds", default_var=str(60))) #60 * 60 * 24
+WAIT_TIMEOUT_SECONDS = int(Variable.get("review_wait_timeout_seconds", default_var=str(60*60*24)))
 WAIT_POKE_INTERVAL_SECONDS = int(Variable.get("review_poke_interval_seconds", default_var="60"))
 ASSUMPTION_UPLOAD_AUTHOR = Variable.get(
     "assumption_upload_author",
