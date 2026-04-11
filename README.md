@@ -1,6 +1,6 @@
 # Insurance Analytics Platform
 
-A personal project focused on **auto insurance actuarial pricing**, using **Snowflake + dbt + Python** to build a reproducible workflow from simulated source data through triangles, LDF/CDF, ultimate candidates, selected ultimate methods, trend review, and final indication outputs.
+A personal project focused on **auto insurance actuarial pricing**, using **Snowflake + dbt + Python** to build a reproducible workflow from simulated source data through triangles, LDF/CDF, ultimate candidates, selected ultimate methods, trend review, indication outputs, and a controls layer.
 
 > This repository is a portfolio-grade implementation of a human-in-the-loop actuarial workflow with Airflow orchestration.
 
@@ -9,13 +9,14 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 ## 1) Project Objectives
 
 - Build a repeatable actuarial pricing data pipeline.
-- Turn actuarial judgment inputs (LDF selection, candidate ultimates, selected ultimate methods, trend, expense assumptions) into structured data assets.
-- Support multiple segmentation strategies (segmentation versions) for comparison.
-- Produce key pricing outputs used for rate indication:
-  - Ultimate loss / claim count
-  - Frequency / Severity
-  - Pure Premium
-  - Indicated Premium / Indicated Rate Change
+- Turn actuarial judgment inputs into structured data assets instead of ad hoc spreadsheet logic.
+- Support multiple segmentation strategies through `segmentation_version`.
+- Produce key pricing outputs used for indication:
+  - ultimate loss / claim count
+  - frequency / severity
+  - pure premium
+  - indicated premium / indicated rate change
+- Add a controls layer for reconciliation, tolerances, and movement attribution.
 
 ---
 
@@ -33,21 +34,29 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 ```text
 .
 ├── README.md
-├── data_pipeline/
-│   ├── generate_data.py                # Simulates policy/claim/rate history and writes to Snowflake
-│   ├── dbt_project.yml
-│   ├── profiles.yml
-│   ├── macros/
-│   │   ├── effective_date_valid.sql
-│   │   ├── generate_years.sql
-│   │   └── segmentation.sql
-│   └── models/
-│       ├── staging/                    # Source cleanup and column standardization
-│       ├── intermediate/               # Exposure, triangle, LDF/CDF, ultimate
-│       ├── marts/                      # Frequency/severity, premium, rate change
-│       ├── dim/
-│       └── config/
-└── *.xlsx                              # Actuarial input templates (LDF / trend / selected ultimate / expense)
+├── airflow/
+└── data_pipeline/
+    ├── generate_data.py                # Simulates policy/claim/rate history and writes to Snowflake
+    ├── dbt_project.yml
+    ├── profiles.yml
+    ├── macros/
+    ├── models/
+    │   ├── staging/                    # Source cleanup and column standardization
+    │   ├── intermediate/
+    │   │   ├── data/
+    │   │   ├── triangle/
+    │   │   ├── ldf/
+    │   │   ├── cdf/
+    │   │   └── ultimate/
+    │   ├── marts/
+    │   │   ├── ultimate/
+    │   │   ├── frequency_severity/
+    │   │   ├── pure_premium/
+    │   │   ├── indicated_premium/
+    │   │   └── controls/
+    │   ├── dim/
+    │   └── config/
+    └── *.xlsx                          # Actuarial input templates (LDF / trend / selected ultimate / expense)
 ```
 
 Workbook templates in `data_pipeline/` include:
@@ -68,17 +77,17 @@ Workbook templates in `data_pipeline/` include:
    - `rate_level_history`
 2. dbt `staging`: source mapping and column cleanup.
 3. dbt `intermediate`:
-   - claim snapshot and cumulative triangle
-   - LDF/CDF derivation
-   - Chain Ladder ultimate
-   - policy exposure
+   - `data/`: claim snapshots and policy exposure
+   - `triangle/`: cumulative and incremental triangles
+   - `ldf/`: raw, weighted, average, and selected LDF logic
+   - `cdf/`: development-to-ultimate conversion factors
+   - `ultimate/`: Chain Ladder ultimate outputs
 4. dbt `marts`:
-   - all ultimate method candidates
-   - selected ultimate by accident year
-   - frequency / severity
-   - trended frequency / severity
-   - pure premium
-   - indicated premium / indicated rate change
+   - `ultimate/`: all candidate and selected ultimate outputs
+   - `frequency_severity/`: frequency and severity metrics
+   - `pure_premium/`: trended metrics and pure premium outputs
+   - `indicated_premium/`: indicated premium and rate change outputs
+   - `controls/`: reconciliation, tolerance, and attribution summaries
 
 ---
 
@@ -93,6 +102,7 @@ The workflow supports actuarial judgment updates at these checkpoints:
 5. **Expense assumptions**: update `expense_assumption.xlsx`
 
 This design keeps both:
+
 - reproducible pipeline execution
 - expert judgment flexibility
 
@@ -129,11 +139,7 @@ python generate_data.py
 
 ```bash
 cd data_pipeline
-
-# install packages
 dbt deps
-
-# build + test
 dbt build
 ```
 
@@ -147,17 +153,17 @@ dbt run --vars '{segmentation_version: v1}'
 
 ## 7) Airflow Automation
 
-The project now includes an Airflow DAG at `airflow/dags/insurance_actuarial_pipeline.py`.
+The project includes an Airflow DAG at `airflow/dags/insurance_actuarial_pipeline.py`.
 
 It orchestrates:
 
 1. `generate_simulated_data`
-2. `dbt_build_triangle`
+2. `dbt_build_triangle_models`
 3. `export_triangle_for_ldf_review`
 4. `open_ldf_review`
 5. `wait_for_ldf_selection_upload`
 6. `upload_ldf_selection`
-7. `dbt_run_chain_ladder`
+7. `dbt_build_chain_ladder`
 8. `export_ultimate_for_review`
 9. `open_selected_ultimate_review`
 10. `wait_for_selected_ultimate_upload`
@@ -168,16 +174,17 @@ It orchestrates:
 15. `open_ultimate_selection_review`
 16. `wait_for_ultimate_selection_upload`
 17. `upload_ultimate_selection`
-18. `dbt_run_selected_ultimate_metrics`
+18. `dbt_build_selected_ultimate_metrics`
 19. `export_frequency_severity_for_review`
 20. `open_trend_review`
 21. `wait_for_trend_selection_upload`
 22. `upload_trend_selection`
-23. `dbt_run_trended_metrics`
+23. `dbt_build_trended_metrics`
 24. `open_expense_review`
 25. `wait_for_expense_assumption_upload`
 26. `upload_expense_assumption`
-27. `dbt_run_indication`
+27. `dbt_build_indication`
+28. `dbt_build_controls_summary`
 
 How the manual checkpoints work:
 
@@ -186,78 +193,24 @@ How the manual checkpoints work:
 - The sensor continues only after the workbook modification time is newer than the checkpoint open time
 - The DAG uploads only the workbook for that checkpoint back to Snowflake
 
-Supporting script:
+Supporting scripts:
 
 - `data_pipeline/upload_actuarial_inputs.py`
-  - Upload all workbooks: `python upload_actuarial_inputs.py`
-  - Upload one workbook: `python upload_actuarial_inputs.py --file trend_selection.xlsx`
 - `data_pipeline/export_ultimate_selection_review.py`
-  - Export all ultimate method candidates by segment and accident year
 - `data_pipeline/generate_ultimate_selection_template.py`
-  - Generate `ultimate_selection.xlsx` for final method choice by AY
 
 Airflow setup notes:
 
 - A Docker Compose startup environment is included under `airflow/`
-- The DAG now reads paths and runtime settings from Airflow Variables instead of hardcoding them
+- The DAG reads paths and runtime settings from Airflow Variables
 - Docker injects those Variables through `AIRFLOW_VAR_*` environment variables
-- Ensure Snowflake environment variables are present in `airflow/.env`
+- Snowflake environment variables must be present in `airflow/.env`
 
 ---
 
-## 8) Next Steps
+## 8) Controls Layer
 
-The next set of improvements for this platform would focus on making it more production-oriented and more actuarially robust:
-
-1. **Deeper data quality and reconciliation**
-   - Add intermediate-layer reconciliation checks
-   - Add stage-to-stage row count and amount checks
-   - Add control totals and financial tie-outs
-   - Add triangle monotonicity checks
-   - Add LDF / CDF reasonableness checks
-   - Add selected-assumption coverage checks
-   - Add ultimate output reconciliation checks
-
-2. **Stronger assumption management**
-   - Add assumption versioning
-   - Track who changed what and when
-   - Store timestamp, author, and rationale
-   - Add approval states
-   - Compare current versus prior assumption versions
-   - Generate assumption diffs before upload
-
-3. **Results consumption layer**
-   - Add a lightweight UI or dashboard for review and analysis
-   - Show triangle review pages
-   - Compare ultimate candidates across methods
-   - Summarize selected methods by accident year
-   - Add trend review charts
-   - Add pure premium and indication waterfall views
-   - Support segmentation comparison
-
-4. **Broader actuarial method support**
-   - Expand BF decomposition
-   - Make Cape Cod implementation more explicit
-   - Add paid-versus-reported comparison
-   - Add tail factor logic
-   - Add clearer selection diagnostics
-   - Support calendar-effect and exposure-trend splits
-   - Support scenario comparison across methods
-
-5. **More production-grade engineering**
-   - Add a REST API layer for assumptions and results
-   - Add a FastAPI service layer
-   - Improve containerization and deployment setup
-   - Add CI/CD checks
-   - Add monitoring and alerting
-   - Add role-based access design
-   - Add logging and audit trails
-
----
-
-## 9) Controls Layer
-
-In addition to dbt tests, the project also includes a controls and reconciliation layer implemented as dbt marts. These models are meant to explain differences, quantify impacts, and support exception reporting rather than just returning pass/fail results.
+In addition to dbt tests, the project includes a controls and reconciliation layer implemented as dbt marts. These models are meant to explain differences, quantify impacts, and support exception reporting rather than just returning pass/fail results.
 
 - `mart_control_totals_financial_summary`
   Summarizes key source-versus-target control totals such as premium, exposure, paid, incurred, and claim count.
@@ -275,14 +228,56 @@ These models complement the dbt test suite:
 - dbt tests are used for rule enforcement and pass/fail validation
 - control marts are used for diagnostics, explanation, and future dashboarding / monitoring
 
+At the moment, the `marts` layer has stronger diagnostics than direct tests. Most hard validation rules still live in source, staging, and intermediate models, while the marts layer is currently checked mainly through:
+
+- control marts
+- reconciliation rollups
+- downstream business-rule tests that validate outputs indirectly
+
+---
+
+## 9) Next Steps
+
+The next set of improvements for this platform would focus on making it more production-oriented and more actuarially robust:
+
+1. **Results consumption layer**
+   - Add a lightweight UI or dashboard for review and analysis
+   - Show triangle review pages
+   - Compare ultimate candidates across methods
+   - Summarize selected methods by accident year
+   - Add trend review charts
+   - Add pure premium and indication waterfall views
+   - Support segmentation comparison
+
+2. **Broader actuarial method support**
+   - Expand BF decomposition
+   - Make Cape Cod implementation more explicit
+   - Add paid-versus-reported comparison
+   - Add tail factor logic
+   - Add clearer selection diagnostics
+   - Support calendar-effect and exposure-trend splits
+   - Support scenario comparison across methods
+   - Support valuation date with monthly or quarterly
+   - Incorportate [chainladder-python] package(https://chainladder-python.readthedocs.io/en/latest/intro.html)
+
+3. **More production-grade engineering**
+   - Add a REST API layer for assumptions and results
+   - Add a FastAPI service layer
+   - Improve containerization and deployment setup
+   - Add CI/CD checks
+   - Add monitoring and alerting
+   - Add role-based access design
+   - Add logging and audit trails
+
 ---
 
 ## 10) Skills Demonstrated
 
 - SQL / dbt modeling
-- Actuarial pricing workflow design (triangle, LDF/CDF, ultimate, indication)
+- Actuarial pricing workflow design
 - Human-in-the-loop process integration
 - Data pipeline architecture with orchestration readiness
+- Reconciliation and controls design
 
 ---
 

@@ -27,7 +27,89 @@ DBT_BIN = Variable.get("dbt_bin", default_var=os.getenv("DBT_BIN", "dbt"))
 DEFAULT_SEGMENTATION_VERSION = Variable.get("segmentation_version", default_var="v3")
 WAIT_TIMEOUT_SECONDS = int(Variable.get("review_wait_timeout_seconds", default_var=str(60 * 60 * 24)))
 WAIT_POKE_INTERVAL_SECONDS = int(Variable.get("review_poke_interval_seconds", default_var="60"))
+ASSUMPTION_UPLOAD_AUTHOR = Variable.get(
+    "assumption_upload_author",
+    default_var=os.getenv("ASSUMPTION_AUTHOR", "airflow"),
+)
+ASSUMPTION_VERSION_PREFIX = Variable.get(
+    "assumption_version_prefix",
+    default_var=os.getenv("ASSUMPTION_VERSION_PREFIX", "airflow"),
+)
 
+TRIANGLE_BUILD_MODELS = [
+    "segmentation_config",
+    "dim_date",
+    "dim_valuation_dates",
+    "stg_policy",
+    "stg_claim",
+    "stg_rate_level_history",
+    "int_claim_snapshot",
+    "int_policy_exposure",
+    "int_claim_triangle_cumulative",
+    "int_claim_triangle_incremental",
+]
+
+CHAIN_LADDER_MODELS = [
+    "stg_ldf_selection_table_incurred",
+    "stg_ldf_selection_table_claim_count",
+    "stg_ldf_selection_table_paid",
+    "int_ldf_raw",
+    "int_ldf_last3_weighted",
+    "int_ldf_avg_incurred",
+    "int_ldf_avg_claim_count",
+    "int_ldf_avg_paid",
+    "int_ldf_weighted_incurred",
+    "int_ldf_weighted_claim_count",
+    "int_ldf_weighted_paid",
+    "int_ldf_selected_incurred",
+    "int_ldf_selected_claim_count",
+    "int_ldf_selected_paid",
+    "int_cdf_incurred",
+    "int_cdf_claim_count",
+    "int_cdf_paid",
+    "int_ultimate_incurred_CL",
+    "int_ultimate_claim_count_CL",
+    "int_ultimate_paid_CL",
+]
+
+ULTIMATE_CANDIDATE_MODELS = [
+    "stg_selected_ultimate_loss",
+    "stg_selected_ultimate_claim_count",
+    "fct_ultimate_loss",
+    "fct_ultimate_claim_count",
+]
+
+SELECTED_ULTIMATE_METRICS_MODELS = [
+    "stg_ultimate_selection_loss",
+    "stg_ultimate_selection_claim_count",
+    "fct_selected_ultimate_loss",
+    "fct_selected_ultimate_claim_count",
+    "fct_frequency_severity",
+]
+
+TRENDED_METRICS_MODELS = [
+    "stg_trend_selection",
+    "fct_frequency_severity_trended",
+    "fct_pure_premium",
+]
+
+INDICATION_MODELS = [
+    "stg_expense_assumption",
+    "fct_indicated_premium",
+    "mart_indicated_rate_change_pure_premium",
+]
+
+CONTROL_SUMMARY_MODELS = [
+    "mart_control_totals_financial_summary",
+    "mart_control_tolerance_by_metric",
+    "mart_reconciliation_by_segment",
+    "mart_assumption_impact_reconciliation",
+    "mart_reserve_pricing_movement_attribution",
+]
+
+# -----------------------
+# Helpers
+# -----------------------
 
 def run_command(command, cwd):
     result = subprocess.run(
@@ -50,10 +132,22 @@ def run_python_script(script_name, script_args=None):
         command.extend(script_args)
     run_command(command, DATA_PIPELINE_DIR)
 
+def run_dbt_build(model_names):
+    run_command(
+        [
+            DBT_BIN,
+            "build",
+            "--vars",
+            f"{{segmentation_version: {DEFAULT_SEGMENTATION_VERSION}}}",
+            "--select",
+            *model_names,
+        ],
+        DATA_PIPELINE_DIR,
+    )
 
-def run_dbt_command(args):
-    run_command([DBT_BIN, *args], DATA_PIPELINE_DIR)
-
+# -----------------------
+# Human-in-the-loop
+# -----------------------
 
 def create_review_request(checkpoint_name, workbook_name, instructions, **context):
     checkpoint_dir = REVIEW_PACKET_DIR / checkpoint_name
@@ -107,8 +201,24 @@ def sensor_kwargs(workbook_name, upstream_task_id):
     }
 
 
+def build_upload_script_args(file_name, checkpoint_name):
+    return [
+        "--file",
+        file_name,
+        "--author",
+        ASSUMPTION_UPLOAD_AUTHOR,
+        "--comment",
+        f"Airflow upload from {checkpoint_name} checkpoint for run {{{{ run_id }}}}",
+        "--version",
+        f"{ASSUMPTION_VERSION_PREFIX}_{checkpoint_name}_{{{{ run_id }}}}",
+    ]
+
+# -----------------------
+# DAG
+# -----------------------
+
 default_args = {
-    "owner": "codex",
+    "owner": "yy",
     "depends_on_past": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
@@ -119,39 +229,35 @@ with DAG(
     dag_id="insurance_actuarial_pipeline",
     description="Human-in-the-loop actuarial pricing pipeline orchestrated with Airflow and dbt.",
     default_args=default_args,
-    start_date=datetime(2026, 4, 2),
+    start_date=datetime(2026, 4, 9),
     schedule=None,
     catchup=False,
     tags=["dbt", "snowflake", "actuarial"],
 ) as dag:
+
+    # -----------------------
+    # Data generation
+    # -----------------------
+
     generate_simulated_data = PythonOperator(
         task_id="generate_simulated_data",
         python_callable=run_python_script,
         op_kwargs={"script_name": "generate_data.py"},
     )
 
-    dbt_build_triangle = PythonOperator(
-        task_id="dbt_build_triangle",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "build",
-                "--select",
-                "segmentation_config",
-                "dim_date",
-                "dim_valuation_dates",
-                "stg_policy",
-                "stg_claim",
-                "stg_rate_level_history",
-                "int_policy_exposure",
-                "int_claim_snapshot",
-                "int_claim_triangle_incremental",
-                "int_claim_triangle_cumulative",
-                "int_ldf_raw",
-                "int_ldf_last3_weighted",
-            ]
-        },
+    # -----------------------
+    # Triangle build (includes staging + data)
+    # -----------------------
+
+    dbt_build_triangle_models = PythonOperator(
+        task_id="dbt_build_triangle_models",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": TRIANGLE_BUILD_MODELS},
     )
+
+    # -----------------------
+    # LDF review
+    # -----------------------
 
     export_triangle_for_ldf_review = PythonOperator(
         task_id="export_triangle_for_ldf_review",
@@ -192,34 +298,18 @@ with DAG(
         python_callable=run_python_script,
         op_kwargs={
             "script_name": "upload_actuarial_inputs.py",
-            "script_args": ["--file", "ldf_selection_table.xlsx"],
+            "script_args": build_upload_script_args("ldf_selection_table.xlsx", "ldf_selection"),
         },
     )
 
-    dbt_run_chain_ladder = PythonOperator(
-        task_id="dbt_run_chain_ladder",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "run",
-                "--select",
-                "stg_ldf_selection_table_claims",
-                "stg_ldf_selection_table_claim_count",
-                "int_ldf_avg_claims",
-                "int_ldf_avg_claim_count",
-                "int_ldf_weighted_claims",
-                "int_ldf_weighted_claim_count",
-                "int_ldf_selected_paid",
-                "int_ldf_selected_incurred",
-                "int_ldf_selected_claim_count",
-                "int_cdf_paid",
-                "int_cdf_incurred",
-                "int_cdf_claim_count",
-                "int_ultimate_paid_CL",
-                "int_ultimate_incurred_CL",
-                "int_ultimate_claim_count_CL",
-            ]
-        },
+    # ------------------------------------
+    # Chain ladder (ldf + cdf + ultimate)
+    # ------------------------------------
+
+    dbt_build_chain_ladder = PythonOperator(
+        task_id="dbt_build_chain_ladder",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": CHAIN_LADDER_MODELS},
     )
 
     export_ultimate_for_review = PythonOperator(
@@ -259,25 +349,18 @@ with DAG(
         python_callable=run_python_script,
         op_kwargs={
             "script_name": "upload_actuarial_inputs.py",
-            "script_args": ["--file", "selected_ultimate.xlsx"],
+            "script_args": build_upload_script_args("selected_ultimate.xlsx", "selected_ultimate"),
         },
     )
 
+    # ---------------------------------------------------------
+    # Ultimate loss & ultimate claim counts of Several Methods
+    # ---------------------------------------------------------
+
     dbt_build_ultimate_candidates = PythonOperator(
         task_id="dbt_build_ultimate_candidates",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "run",
-                "--vars",
-                f"{{segmentation_version: {DEFAULT_SEGMENTATION_VERSION}}}",
-                "--select",
-                "stg_selected_ultimate_loss",
-                "stg_selected_ultimate_claim_count",
-                "fct_ultimate_loss",
-                "fct_ultimate_claim_count",
-            ]
-        },
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": ULTIMATE_CANDIDATE_MODELS},
     )
 
     export_ultimate_selection_for_review = PythonOperator(
@@ -331,26 +414,18 @@ with DAG(
         python_callable=run_python_script,
         op_kwargs={
             "script_name": "upload_actuarial_inputs.py",
-            "script_args": ["--file", "ultimate_selection.xlsx"],
+            "script_args": build_upload_script_args("ultimate_selection.xlsx", "ultimate_selection"),
         },
     )
 
-    dbt_run_selected_ultimate_metrics = PythonOperator(
-        task_id="dbt_run_selected_ultimate_metrics",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "run",
-                "--vars",
-                f"{{segmentation_version: {DEFAULT_SEGMENTATION_VERSION}}}",
-                "--select",
-                "stg_ultimate_selection_loss",
-                "stg_ultimate_selection_claim_count",
-                "fct_selected_ultimate_loss",
-                "fct_selected_ultimate_claim_count",
-                "fct_frequency_severity",
-            ]
-        },
+    # -------------------------------------------------
+    # Selected Ultimate loss & ultimate claim counts
+    # -------------------------------------------------
+
+    dbt_build_selected_ultimate_metrics = PythonOperator(
+        task_id="dbt_build_selected_ultimate_metrics",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": SELECTED_ULTIMATE_METRICS_MODELS},
     )
 
     export_frequency_severity_for_review = PythonOperator(
@@ -389,24 +464,18 @@ with DAG(
         python_callable=run_python_script,
         op_kwargs={
             "script_name": "upload_actuarial_inputs.py",
-            "script_args": ["--file", "trend_selection.xlsx"],
+            "script_args": build_upload_script_args("trend_selection.xlsx", "trend_selection"),
         },
     )
 
-    dbt_run_trended_metrics = PythonOperator(
-        task_id="dbt_run_trended_metrics",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "run",
-                "--vars",
-                f"{{segmentation_version: {DEFAULT_SEGMENTATION_VERSION}}}",
-                "--select",
-                "stg_trend_selection",
-                "fct_frequency_severity_trended",
-                "fct_pure_premium",
-            ]
-        },
+    # -------------------
+    # Pure Premium
+    # -------------------
+
+    dbt_build_trended_metrics = PythonOperator(
+        task_id="dbt_build_trended_metrics",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": TRENDED_METRICS_MODELS},
     )
 
     open_expense_review = PythonOperator(
@@ -416,7 +485,7 @@ with DAG(
             "checkpoint_name": "expense_assumption",
             "workbook_name": "expense_assumption.xlsx",
             "instructions": (
-                "Update expense and profit assumptions for each segment, then save the workbook."
+                "Update expense and profit assumptions for each state, then save the workbook."
             ),
         },
     )
@@ -431,32 +500,34 @@ with DAG(
         python_callable=run_python_script,
         op_kwargs={
             "script_name": "upload_actuarial_inputs.py",
-            "script_args": ["--file", "expense_assumption.xlsx"],
+            "script_args": build_upload_script_args("expense_assumption.xlsx", "expense_assumption"),
         },
     )
 
-    dbt_run_indication = PythonOperator(
-        task_id="dbt_run_indication",
-        python_callable=run_dbt_command,
-        op_kwargs={
-            "args": [
-                "run",
-                "--select",
-                "stg_expense_assumption",
-                "fct_indicated_premium",
-                "mart_indicated_rate_change_pure_premium",
-            ]
-        },
+    # -------------------
+    # Indicated Premium
+    # -------------------
+
+    dbt_build_indication = PythonOperator(
+        task_id="dbt_build_indication",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": INDICATION_MODELS},
+    )
+
+    dbt_build_controls_summary = PythonOperator(
+        task_id="dbt_build_controls_summary",
+        python_callable=run_dbt_build,
+        op_kwargs={"model_names": CONTROL_SUMMARY_MODELS},
     )
 
     (
         generate_simulated_data
-        >> dbt_build_triangle
+        >> dbt_build_triangle_models
         >> export_triangle_for_ldf_review
         >> open_ldf_review
         >> wait_for_ldf_selection_upload
         >> upload_ldf_selection
-        >> dbt_run_chain_ladder
+        >> dbt_build_chain_ladder
         >> export_ultimate_for_review
         >> open_selected_ultimate_review
         >> wait_for_selected_ultimate_upload
@@ -467,14 +538,15 @@ with DAG(
         >> open_ultimate_selection_review
         >> wait_for_ultimate_selection_upload
         >> upload_ultimate_selection
-        >> dbt_run_selected_ultimate_metrics
+        >> dbt_build_selected_ultimate_metrics
         >> export_frequency_severity_for_review
         >> open_trend_review
         >> wait_for_trend_selection_upload
         >> upload_trend_selection
-        >> dbt_run_trended_metrics
+        >> dbt_build_trended_metrics
         >> open_expense_review
         >> wait_for_expense_assumption_upload
         >> upload_expense_assumption
-        >> dbt_run_indication
+        >> dbt_build_indication
+        >> dbt_build_controls_summary
     )
