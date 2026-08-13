@@ -39,12 +39,16 @@ PRODUCT_CONFIG = {
         "policy_prefix": "PA",
         "source_system": "policy_admin_auto_sim",
         "claim_source_system": "claims_admin_auto_sim",
+        "term_months": [6, 12],
+        "term_weights": [0.65, 0.35],
     },
     "commercial_property": {
         "product_id": "cp_standard",
         "policy_prefix": "CP",
         "source_system": "policy_admin_property_sim",
         "claim_source_system": "claims_admin_property_sim",
+        "term_months": [6, 12],
+        "term_weights": [0.05, 0.95],
     },
 }
 
@@ -421,6 +425,19 @@ def actual_end_date(row: pd.Series | dict) -> datetime:
     return min(expiration, pd.to_datetime(cancellation).to_pydatetime())
 
 
+def coverage_term_factor(
+    effective_date: object,
+    expiration_date: object,
+) -> float:
+    """Return the Actual/365.25 portion of a year covered by the term."""
+    effective = pd.to_datetime(effective_date).to_pydatetime()
+    expiration = pd.to_datetime(expiration_date).to_pydatetime()
+    coverage_days = (expiration - effective).days
+    if coverage_days <= 0:
+        raise ValueError("Coverage expiration date must be after effective date")
+    return coverage_days / 365.25
+
+
 def risk_exposure_window(
     policy: dict,
     risk_unit: dict,
@@ -487,7 +504,11 @@ def generate_raw_policy(
         for sequence in range(1, policy_count + 1):
             policy_id = f"POL{policy_counter:08d}"
             effective_date = rand_date(START_DATE, datetime(2023, 6, 30))
-            term_months = random.choice([6, 12])
+            term_months = random.choices(
+                config["term_months"],
+                weights=config["term_weights"],
+                k=1,
+            )[0]
             expiration_date = (
                 pd.Timestamp(effective_date)
                 + pd.DateOffset(months=term_months)
@@ -857,6 +878,12 @@ def generate_auto_coverages(
         policy = policy_lookup[risk_unit["POLICY_ID"]]
         vehicle = vehicle_lookup[risk_unit["SOURCE_RISK_UNIT_ID"]]
         driver = driver_lookup[primary_driver_by_vehicle[vehicle["VEHICLE_ID"]]]
+        coverage_effective_date = policy["EFFECTIVE_DATE"]
+        coverage_expiration_date = policy["EXPIRATION_DATE"]
+        term_factor = coverage_term_factor(
+            coverage_effective_date,
+            coverage_expiration_date,
+        )
         for coverage_code in _select_auto_coverages(
             vehicle,
             policy["EFFECTIVE_DATE"],
@@ -876,12 +903,12 @@ def generate_auto_coverages(
                     "RISK_UNIT_ID": risk_unit["RISK_UNIT_ID"],
                     "COVERAGE_CODE": coverage_code,
                     "COVERAGE_FAMILY": coverage["coverage_family"],
-                    "EFFECTIVE_DATE": policy["EFFECTIVE_DATE"],
-                    "EXPIRATION_DATE": policy["EXPIRATION_DATE"],
+                    "EFFECTIVE_DATE": coverage_effective_date,
+                    "EXPIRATION_DATE": coverage_expiration_date,
                     "LIMIT_AMOUNT": coverage["limit"],
                     "DEDUCTIBLE_AMOUNT": coverage["deductible"],
                     "WRITTEN_PREMIUM": round(
-                        coverage["base_rate"] * pricing_factor,
+                        coverage["base_rate"] * pricing_factor * term_factor,
                         2,
                     ),
                     "SOURCE_SYSTEM": "policy_admin_auto_sim",
@@ -906,6 +933,12 @@ def generate_property_coverages(
     for risk_unit in risk_units.to_dict("records"):
         policy = policy_lookup[risk_unit["POLICY_ID"]]
         location = location_lookup[risk_unit["SOURCE_RISK_UNIT_ID"]]
+        coverage_effective_date = policy["EFFECTIVE_DATE"]
+        coverage_expiration_date = policy["EXPIRATION_DATE"]
+        term_factor = coverage_term_factor(
+            coverage_effective_date,
+            coverage_expiration_date,
+        )
         occupancy = PROPERTY_OCCUPANCIES[location["OCCUPANCY"]]
         construction = PROPERTY_CONSTRUCTIONS[location["CONSTRUCTION_TYPE"]]
         state_factor = PROPERTY_PRICING_FACTORS["state"].get(
@@ -937,12 +970,15 @@ def generate_property_coverages(
                     "RISK_UNIT_ID": risk_unit["RISK_UNIT_ID"],
                     "COVERAGE_CODE": coverage_code,
                     "COVERAGE_FAMILY": coverage["coverage_family"],
-                    "EFFECTIVE_DATE": policy["EFFECTIVE_DATE"],
-                    "EXPIRATION_DATE": policy["EXPIRATION_DATE"],
+                    "EFFECTIVE_DATE": coverage_effective_date,
+                    "EXPIRATION_DATE": coverage_expiration_date,
                     "LIMIT_AMOUNT": limit_amount,
                     "DEDUCTIBLE_AMOUNT": coverage["deductible"],
                     "WRITTEN_PREMIUM": round(
-                        limit_amount * coverage["base_rate"] * pricing_factor,
+                        limit_amount
+                        * coverage["base_rate"]
+                        * pricing_factor
+                        * term_factor,
                         2,
                     ),
                     "SOURCE_SYSTEM": "policy_admin_property_sim",
@@ -1547,8 +1583,6 @@ def load_dataframe_to_snowflake(conn, df: pd.DataFrame, table_name: str) -> None
         conn,
         df,
         table_name.upper(),
-        # database=get_env("SNOWFLAKE_DATABASE"),
-        # schema=get_env("SNOWFLAKE_SCHEMA"),
         auto_create_table=True,
         overwrite=True,
         use_logical_type=True,

@@ -5,3 +5,7 @@ output/
 airflow/review_packets/
 airflow/.env
 airflow/logs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

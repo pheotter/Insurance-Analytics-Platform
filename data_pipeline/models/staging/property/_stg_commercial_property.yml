@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_property_location
+    description: "Standardized Commercial Property location and building attributes."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - policy_id
+              - location_sequence
+    columns:
+      - name: location_id
+        description: "Globally unique property location identifier."
+        tests: [not_null, unique]
+      - name: policy_id
+        description: "Parent Commercial Property policy identifier."
+        tests: [not_null]
+      - name: location_sequence
+        description: "Location sequence within the policy."
+        tests: [not_null]
+      - name: state
+        description: "State where the property is located."
+      - name: zip_code
+        description: "Five-digit property ZIP code."
+      - name: occupancy
+        description: "Primary occupancy classification."
+      - name: construction_type
+        description: "Building construction classification."
+      - name: year_built
+        description: "Year the property was built."
+      - name: protection_class
+        description: "Fire protection class."
+      - name: total_insured_value
+        description: "Total insured value of the location."
+      - name: source_system
+        description: "Operational property location source."

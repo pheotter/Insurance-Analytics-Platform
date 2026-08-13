@@ -1,0 +1,107 @@
+version: 2
+
+models:
+  - name: stg_vehicle
+    description: "Standardized Personal Auto vehicle attributes."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - policy_id
+              - vehicle_sequence
+    columns:
+      - name: vehicle_id
+        description: "Globally unique vehicle identifier."
+        tests: [not_null, unique]
+      - name: policy_id
+        description: "Parent Personal Auto policy identifier."
+        tests: [not_null]
+      - name: vehicle_sequence
+        description: "Vehicle sequence within the policy."
+        tests: [not_null]
+      - name: model_year
+        description: "Vehicle model year."
+      - name: make
+        description: "Vehicle manufacturer."
+      - name: model
+        description: "Vehicle model."
+      - name: vehicle_type
+        description: "Vehicle body or segment classification."
+      - name: garaging_state
+        description: "State where the vehicle is principally garaged."
+      - name: annual_mileage
+        description: "Estimated annual vehicle mileage."
+      - name: usage
+        description: "Primary vehicle usage."
+      - name: safety_device_flag
+        description: "Indicator that a simulated safety device is present."
+      - name: source_system
+        description: "Operational vehicle source."
+
+  - name: stg_driver
+    description: "Standardized Personal Auto driver attributes."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - policy_id
+              - driver_sequence
+    columns:
+      - name: driver_id
+        description: "Globally unique driver identifier."
+        tests: [not_null, unique]
+      - name: policy_id
+        description: "Parent Personal Auto policy identifier."
+        tests: [not_null]
+      - name: driver_sequence
+        description: "Driver sequence within the policy."
+        tests: [not_null]
+      - name: date_of_birth
+        description: "Driver date of birth."
+      - name: gender
+        description: "Driver gender code."
+      - name: years_licensed
+        description: "Years licensed at policy inception."
+      - name: prior_accidents
+        description: "Prior accident count."
+      - name: prior_violations
+        description: "Prior violation count."
+      - name: marital_status
+        description: "Driver marital status."
+      - name: credit_tier
+        description: "Simulated credit tier used as a rating feature."
+      - name: source_system
+        description: "Operational driver source."
+
+  - name: stg_driver_vehicle_assignment
+    description: "Standardized effective-dated driver-to-vehicle assignments."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - policy_id
+              - driver_id
+              - vehicle_id
+              - effective_date
+    columns:
+      - name: assignment_id
+        description: "Globally unique assignment identifier."
+        tests: [not_null, unique]
+      - name: policy_id
+        description: "Parent Personal Auto policy identifier."
+        tests: [not_null]
+      - name: driver_id
+        description: "Assigned driver identifier."
+        tests: [not_null]
+      - name: vehicle_id
+        description: "Assigned vehicle identifier."
+        tests: [not_null]
+      - name: assignment_type
+        description: "Primary or occasional driver assignment."
+      - name: effective_date
+        description: "Assignment effective date."
+        tests: [not_null]
+      - name: expiration_date
+        description: "Assignment expiration date."
+      - name: source_system
+        description: "Operational assignment source."

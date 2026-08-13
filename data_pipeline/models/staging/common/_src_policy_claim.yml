@@ -1,0 +1,715 @@
+version: 2
+
+sources:
+  - name: data
+    description: "Synthetic insurance operational source data loaded into Snowflake."
+    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+    tables:
+      - name: raw_policy
+        description: "Policy-level records from the policy administration system."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "expiration_date > effective_date"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "cancellation_date IS NULL OR (cancellation_date >= effective_date AND cancellation_date <= expiration_date)"
+        columns:
+          - name: policy_id
+            description: "Globally unique policy identifier."
+            tests: [not_null, unique]
+          - name: policy_number
+            description: "Business-facing policy number."
+            tests: [not_null, unique]
+          - name: insured_id
+            description: "Insured party identifier."
+            tests: [not_null]
+          - name: product_id
+            description: "Product identifier."
+            tests: [not_null]
+          - name: line_of_business
+            description: "Insurance line of business."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [personal_auto, commercial_property]
+          - name: effective_date
+            description: "Policy effective date."
+            tests:
+              - not_null
+              - effective_date_valid:
+                  arguments:
+                    min_date: '2010-01-01'
+          - name: expiration_date
+            description: "Policy expiration date."
+            tests: [not_null]
+          - name: cancellation_date
+            description: "Cancellation date when the policy terminates early."
+          - name: status
+            description: "Policy lifecycle status."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [active, cancelled, expired]
+          - name: underwriting_tier
+            description: "Underwriting segmentation used by pricing logic."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [preferred, standard, nonstandard, high_risk]
+          - name: primary_state
+            description: "Primary policy state."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [CA, TX, FL, NY, IL, PA, OH, GA, NC, MI]
+          - name: term_months
+            description: "Policy term length in months."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [6, 12]
+          - name: source_system
+            description: "Operational source system that produced the record."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [policy_admin_auto_sim, policy_admin_property_sim]
+          - name: load_batch_id
+            description: "Identifier for the generator or ingestion batch."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC timestamp when the record was loaded."
+            tests: [not_null]
+
+      - name: raw_policy_risk_unit
+        description: "Common risk-unit grain for vehicles and property locations."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "expiration_date > effective_date"
+        columns:
+          - name: risk_unit_id
+            description: "Globally unique risk-unit identifier with LOB namespace."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: risk_unit_type
+            description: "Type of insured object."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [vehicle, property_location]
+          - name: source_risk_unit_id
+            description: "Identifier in the LOB source entity table."
+            tests: [not_null]
+          - name: effective_date
+            description: "Risk-unit effective date."
+            tests: [not_null]
+          - name: expiration_date
+            description: "Risk-unit expiration date."
+            tests: [not_null]
+          - name: status
+            description: "Risk-unit lifecycle status."
+            tests: [not_null]
+          - name: exposure_unit
+            description: "Unit used for exposure calculations."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [car_year, location_year]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_policy_coverage
+        description: "Coverage selections and terms at the policy risk-unit grain."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "expiration_date > effective_date"
+        columns:
+          - name: coverage_id
+            description: "Globally unique coverage-term identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: risk_unit_id
+            description: "Insured risk unit covered by this term."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy_risk_unit')
+                    field: risk_unit_id
+          - name: coverage_code
+            description: "LOB coverage code."
+            tests: [not_null]
+          - name: coverage_family
+            description: "Normalized coverage family."
+            tests: [not_null]
+          - name: effective_date
+            description: "Coverage effective date."
+            tests: [not_null]
+          - name: expiration_date
+            description: "Coverage expiration date."
+            tests: [not_null]
+          - name: limit_amount
+            description: "Coverage limit or insured value."
+            tests: [not_null]
+          - name: deductible_amount
+            description: "Coverage deductible."
+            tests: [not_null]
+          - name: written_premium
+            description: "Written premium for the coverage term."
+            tests: [not_null]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_premium_transaction
+        description: "Billing transactions including endorsements and pro-rata refunds."
+        columns:
+          - name: transaction_id
+            description: "Globally unique premium transaction identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: coverage_id
+            description: "Coverage term affected by the transaction."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy_coverage')
+                    field: coverage_id
+          - name: transaction_type
+            description: "Premium transaction type."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [NEW_BUSINESS, ENDORSEMENT, CANCELLATION]
+          - name: transaction_date
+            description: "Transaction posting date."
+            tests: [not_null]
+          - name: transaction_reason
+            description: "Business reason for the transaction."
+            tests: [not_null]
+          - name: premium_change
+            description: "Signed premium change."
+            tests: [not_null]
+          - name: cumulative_premium
+            description: "Cumulative premium after the transaction."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_claim
+        description: "Claim header records from the claims administration system."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "reported_date >= loss_date"
+        columns:
+          - name: claim_id
+            description: "Globally unique claim identifier with LOB namespace."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: risk_unit_id
+            description: "Risk unit associated with the loss."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy_risk_unit')
+                    field: risk_unit_id
+          - name: coverage_id
+            description: "Coverage term under which the claim was reported."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy_coverage')
+                    field: coverage_id
+          - name: coverage_code
+            description: "Coverage code reported on the claim."
+            tests: [not_null]
+          - name: loss_date
+            description: "Date of loss."
+            tests: [not_null]
+          - name: reported_date
+            description: "Date the claim was reported."
+            tests: [not_null]
+          - name: claim_type
+            description: "Claim type or loss scenario."
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: [collision, weather, theft, bodily_injury, property_damage, fire, wind_hail, water]
+          - name: cause_code
+            description: "Cause-of-loss code."
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: [at_fault, weather, theft, fire, water]
+          - name: claim_status
+            description: "Claim lifecycle status."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [open, closed]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_claim_transaction
+        description: "Claim financial development transactions for paid, reserve, and incurred triangles."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "abs(incurred_loss_change - (paid_loss_change + case_reserve_change + paid_expense_change + case_expense_change - recovery_change)) < 0.01"
+        columns:
+          - name: transaction_id
+            description: "Globally unique claim transaction identifier."
+            tests: [not_null, unique]
+          - name: claim_id
+            description: "Parent claim identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_claim')
+                    field: claim_id
+          - name: transaction_type
+            description: "Claim financial transaction type."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [RESERVE_SET, PAYMENT]
+          - name: transaction_date
+            description: "Transaction posting date."
+            tests: [not_null]
+          - name: paid_loss_change
+            description: "Change in paid indemnity loss."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: case_reserve_change
+            description: "Change in case reserve."
+            tests: [not_null]
+          - name: paid_expense_change
+            description: "Change in paid loss adjustment expense."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: case_expense_change
+            description: "Change in case expense reserve."
+            tests: [not_null]
+          - name: recovery_change
+            description: "Change in salvage, subrogation, or other recovery."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: incurred_loss_change
+            description: "Change in incurred loss."
+            tests: [not_null]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_vehicle
+        description: "Personal auto vehicle records used to describe vehicle risk units."
+        columns:
+          - name: vehicle_id
+            description: "Globally unique vehicle identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: vehicle_sequence
+            description: "Vehicle sequence within the policy."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "> 0"
+          - name: model_year
+            description: "Vehicle model year."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "between 1900 and year(current_date())"
+          - name: make
+            description: "Vehicle manufacturer."
+            tests: [not_null]
+          - name: model
+            description: "Vehicle model."
+            tests: [not_null]
+          - name: vehicle_type
+            description: "Vehicle segment."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [sedan, suv, truck, sports]
+          - name: garaging_state
+            description: "Vehicle garaging state."
+            tests: [not_null]
+          - name: annual_mileage
+            description: "Estimated annual mileage."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "> 0"
+          - name: usage
+            description: "Primary vehicle usage."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [commute, pleasure, business]
+          - name: safety_device_flag
+            description: "Whether a simulated safety device is present."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [0, 1]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_driver
+        description: "Personal auto driver records used for rating and assignment logic."
+        columns:
+          - name: driver_id
+            description: "Globally unique driver identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: driver_sequence
+            description: "Driver sequence within the policy."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "> 0"
+          - name: date_of_birth
+            description: "Driver date of birth."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "<= current_date()"
+          - name: gender
+            description: "Driver gender code."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [F, M, X]
+          - name: years_licensed
+            description: "Years licensed at policy inception."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: prior_accidents
+            description: "Prior accident count."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: prior_violations
+            description: "Prior violation count."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: ">= 0"
+          - name: marital_status
+            description: "Driver marital status."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [single, married, divorced]
+          - name: credit_tier
+            description: "Credit tier used as a rating feature."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [A, B, C, D]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_driver_vehicle_assignment
+        description: "Effective-dated driver-to-vehicle assignments for personal auto."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "expiration_date > effective_date"
+        columns:
+          - name: assignment_id
+            description: "Globally unique assignment identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: driver_id
+            description: "Assigned driver identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_driver')
+                    field: driver_id
+          - name: vehicle_id
+            description: "Assigned vehicle identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_vehicle')
+                    field: vehicle_id
+          - name: assignment_type
+            description: "Primary or occasional assignment."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [PRIMARY, OCCASIONAL]
+          - name: effective_date
+            description: "Assignment effective date."
+            tests: [not_null]
+          - name: expiration_date
+            description: "Assignment expiration date."
+            tests: [not_null]
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      - name: raw_property_location
+        description: "Commercial property locations used for exposure and pricing."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "try_to_number(zip_code) is not null and try_to_number(zip_code) between 10000 and 99999"
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "protection_class between 1 and 10"
+        columns:
+          - name: location_id
+            description: "Globally unique property location identifier."
+            tests: [not_null, unique]
+          - name: policy_id
+            description: "Parent policy identifier."
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('data', 'raw_policy')
+                    field: policy_id
+          - name: location_sequence
+            description: "Location sequence within the policy."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "> 0"
+          - name: state
+            description: "Property state."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [CA, TX, FL, NY, IL, PA, OH, GA, NC, MI]
+          - name: zip_code
+            description: "Five-digit property ZIP code."
+            tests: [not_null]
+          - name: occupancy
+            description: "Primary occupancy classification."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [office, retail, warehouse, manufacturing]
+          - name: construction_type
+            description: "Building construction classification."
+            tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [frame, masonry, noncombustible, fire_resistive]
+          - name: year_built
+            description: "Year the property was built."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "between 1800 and year(current_date())"
+          - name: protection_class
+            description: "Fire protection class from 1 through 10."
+            tests: [not_null]
+          - name: total_insured_value
+            description: "Total insured value for the location."
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  arguments:
+                    expression: "> 0"
+          - name: source_system
+            description: "Operational source system."
+            tests: [not_null]
+          - name: load_batch_id
+            description: "Generator or ingestion batch identifier."
+            tests: [not_null]
+          - name: ingested_at
+            description: "UTC ingestion timestamp."
+            tests: [not_null]
+
+      # - name: rate_level_history
+      #   description: "Legacy rate-level filing source retained for the existing staging model."
+      #   columns:
+      #     - name: filing_id
+      #       description: "Rate filing identifier."
+      #       tests: [not_null, unique]
+      #     - name: effective_date
+      #       description: "Effective date of the rate change."
+      #       tests: [not_null]
+      #     - name: state
+      #       description: "State scope of the filing."
+      #       tests: [not_null]
+      #     - name: risk_class
+      #       description: "Risk-class scope of the filing."
+      #       tests: [not_null]
+      #     - name: vehicle_segment
+      #       description: "Vehicle-segment scope of the filing."
+      #       tests: [not_null]
+      #     - name: rate_change_pct
+      #       description: "Rate change percentage."
+      #       tests: [not_null]
+      #     - name: cumulative_factor
+      #       description: "Cumulative rate-level factor."
+      #       tests: [not_null]
+
+      - name: rate_level_history
+        description: "Legacy rate-level filing source retained for stg_rate_level_history."
