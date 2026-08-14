@@ -1,93 +1,88 @@
-with premium_transaction as (
+with earning_segments as (
 
-    select *
-    from {{ ref('stg_premium_transaction') }}
-    where transaction_type != 'CANCELLATION'
+    select
 
-),
+        transaction_id,
+        policy_id,
+        coverage_id,
+        transaction_type,
+        earning_start_date,
+        earning_end_date,
+        premium_change,
+        earning_days
 
-coverage as (
-
-    select *
-    from {{ ref('int_coverage_active_period') }}
+    from {{ ref('int_premium_earning_segments')}}
 
 ),
 
 months as (
 
-    select *
-    from {{ ref('dim_calendar_month') }}
-
-),
-
-earning_segment as (
-
     select
-        t.transaction_id,
-        t.policy_id,
-        t.coverage_id,
+    
+        month_start,
+        next_month_start
 
-        t.transaction_date as earning_start,
-
-        c.scheduled_expiration_date as scheduled_earning_end,
-
-        c.actual_expiration_date as actual_earning_end,
-
-        t.premium_change
-
-    from premium_transaction t
-    join coverage c
-        on t.coverage_id = c.coverage_id
+    from {{ ref('dim_calendar_month') }}
 
 ),
 
 expanded as (
 
     select
-        e.transaction_id,
-        e.coverage_id,
-        m.month_start as calendar_month,
 
+        e.transaction_id,
+        e.policy_id,
+        e.coverage_id,
+        e.transaction_type,
         e.premium_change,
 
-        datediff(
-            day,
-            e.earning_start,
-            e.scheduled_earning_end
-        ) as scheduled_earning_days,
+        m.month_start as calendar_month,
+
+        greatest(
+            e.earning_start_date,
+            m.month_start
+        ) as earning_start_in_month,
+
+        least(
+            e.earning_end_date,
+            m.next_month_start
+        ) as earning_end_in_month,
+
+        e.earning_days
+
+    from earning_segments e
+    join months m
+        on m.month_start < e.earning_end_date
+       and m.next_month_start > e.earning_start_date
+
+),
+
+monthly as (
+
+    select
+        *,
 
         datediff(
             day,
-
-            greatest(
-                e.earning_start,
-                m.month_start
-            ),
-
-            least(
-                e.actual_earning_end,
-                m.next_month_start
-            )
+            earning_start_in_month,
+            earning_end_in_month
         ) as earned_days_in_month
 
-    from earning_segment e
-    join months m
-        on m.month_start < e.actual_earning_end
-       and m.next_month_start > e.earning_start
+    from expanded
 
 )
 
 select
+
+    policy_id,
     coverage_id,
     calendar_month,
 
     sum(
         premium_change
         * earned_days_in_month
-        / nullif(scheduled_earning_days, 0)
+        / nullif(earning_days, 0)
     ) as earned_premium
 
-from expanded
-group by
-    coverage_id,
-    calendar_month
+from monthly
+group by policy_id, coverage_id, calendar_month

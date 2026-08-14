@@ -1,0 +1,163 @@
+version: 2
+
+models:
+  - name: int_coverage_active_period
+    description: "Coverage-level active periods bounded by the policy, risk-unit, coverage, and cancellation dates."
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "actual_expiration_date > coverage_effective_date"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "actual_expiration_date <= scheduled_expiration_date"
+    columns:
+      - name: coverage_id
+        description: "Unique coverage-term identifier."
+        tests: [not_null, unique]
+      - name: policy_id
+        description: "Parent policy identifier."
+        tests: [not_null]
+      - name: risk_unit_id
+        description: "Covered risk-unit identifier."
+        tests: [not_null]
+      - name: coverage_effective_date
+        description: "Latest effective date across the coverage, policy, and risk unit."
+        tests: [not_null]
+      - name: scheduled_expiration_date
+        description: "Contractual coverage expiration date used as the premium earning denominator."
+        tests: [not_null]
+      - name: actual_expiration_date
+        description: "Actual coverage end after applying policy cancellation and parent-term bounds."
+        tests: [not_null]
+      - name: written_premium
+        description: "Coverage-level written premium."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+  - name: int_coverage_month
+    description: "Coverage active periods expanded to coverage-by-calendar-month rows using half-open date intervals."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [coverage_id, calendar_month]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "exposure_end > exposure_start"
+    columns:
+      - name: coverage_id
+        tests: [not_null]
+      - name: policy_id
+        tests: [not_null]
+      - name: risk_unit_id
+        tests: [not_null]
+      - name: calendar_month
+        tests: [not_null]
+      - name: exposure_start
+        tests: [not_null]
+      - name: exposure_end
+        tests: [not_null]
+      - name: active_days
+        description: "Covered days in the calendar month."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 31
+                inclusive: true
+
+  - name: int_earned_exposure
+    description: "Coverage-month earned exposure measured in coverage-years; this is not a deduplicated risk-unit exposure."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [coverage_id, calendar_month]
+    columns:
+      - name: coverage_id
+        tests: [not_null]
+      - name: policy_id
+        tests: [not_null]
+      - name: risk_unit_id
+        tests: [not_null]
+      - name: calendar_month
+        tests: [not_null]
+      - name: earned_exposure
+        description: "Active coverage days divided by 365.25 without premature rounding."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+
+  - name: int_premium_earning_segments
+    description: "Positive premium transactions with actual and scheduled earning periods. Cancellation refunds are represented through shortened actual earning periods."
+    tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "earning_end_date <= scheduled_earning_end_date"
+    columns:
+      - name: transaction_id
+        tests: [not_null, unique]
+      - name: policy_id
+        tests: [not_null]
+      - name: coverage_id
+        tests: [not_null]
+      - name: transaction_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [NEW_BUSINESS, ENDORSEMENT]
+      - name: earning_start_date
+        tests: [not_null]
+      - name: earning_end_date
+        tests: [not_null]
+      - name: scheduled_earning_end_date
+        tests: [not_null]
+      - name: premium_change
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      - name: earning_days
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      - name: scheduled_earning_days
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+
+  - name: int_earned_premium_month
+    description: "Earned premium allocated to coverage months using scheduled earning days and bounded by actual expiration."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [coverage_id, calendar_month]
+    columns:
+      - name: policy_id
+        tests: [not_null]
+      - name: coverage_id
+        tests: [not_null]
+      - name: calendar_month
+        tests: [not_null]
+      - name: earned_premium
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

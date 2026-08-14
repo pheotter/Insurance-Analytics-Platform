@@ -1631,7 +1631,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output-dir",
-        default=os.getenv("RAW_OUTPUT_DIR", "."),
+        default=os.getenv("RAW_OUTPUT_DIR", "./output"),
         help="Directory for generated CSV files",
     )
     parser.add_argument(

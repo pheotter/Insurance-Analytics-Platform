@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+data_generation/.env
+data_generation/output
+data_generation/*.pem

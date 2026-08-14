@@ -25,6 +25,10 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
+# Project-wide variables
+vars:
+  calendar_start_date: '2010-01-01'
+  calendar_end_date: '2031-01-01'
 
 # In this example config, we tell dbt to build all models in the example/
 # directory as views. These settings can be overridden in the individual model
@@ -34,30 +38,56 @@ models:
 
     staging:
       +materialized: view
+      +tags: ["staging"]
+
+      common:
+        +tags: ["staging", "common"]
+
+      auto:
+        +tags: ["staging", "auto"]
+
+      property:
+        +tags: ["staging", "property"]
+
 
     intermediate:
       +materialized: table
       +tags: ["intermediate"]
-      data:
-        +tags: ["intermediate", "data"]
-      triangle:
-        +tags: ["intermediate", "triangle"]
-      ldf:
-        +tags: ["intermediate", "ldf"]
-      cdf:
-        +tags: ["intermediate", "cdf"]
-      ultimate:
-        +tags: ["intermediate", "ultimate"]
+
+      exposure:
+        +tags: ["intermediate", "exposure"]
+
+      claims:
+        +tags: ["intermediate", "claims"]
+
+      features:
+        +tags: ["intermediate", "features"]
+
+
+    core:
+      +materialized: table
+      +tags: ["core"]
+
+
+    features:
+      +materialized: table
+      +tags: ["features"]
+
+
+    actuarial:
+      +materialized: table
+      +tags: ["actuarial"]
+
+      development:
+        +tags: ["actuarial", "development"]
+
+      pricing:
+        +tags: ["actuarial", "pricing"]
+
+      controls:
+        +tags: ["actuarial", "controls"]
+
 
     marts:
       +materialized: table
-      ultimate:
-        +tags: ["mart", "ultiamte"]
-      exposure:
-        +tags: ["mart", "exposure"]
-      frequency_severity:
-        +tags: ["mart", "frequency_severity"]
-      pure_premium:
-        +tags: ["mart", "pure_premium"]
-      indicated_premium:
-        +tags: ["mart", "indicated_premium"]
+      +tags: ["mart"]
