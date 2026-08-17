@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: int_claim_valuation_snapshot
+    description: "Claim financial state at each configured valuation date."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - claim_id
+              - valuation_date

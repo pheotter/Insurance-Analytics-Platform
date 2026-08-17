@@ -1,6 +1,7 @@
 -- models/core/fct_claim_transaction.sql
 
 select
+
     transaction_id,
     claim_id,
     transaction_type,

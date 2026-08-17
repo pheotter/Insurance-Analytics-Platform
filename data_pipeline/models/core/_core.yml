@@ -1,0 +1,260 @@
+version: 2
+
+models:
+
+  # ============================================================
+  # DIMENSIONS
+  # ============================================================
+
+  - name: dim_policy
+    columns:
+      - name: policy_id
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_risk_unit
+    columns:
+      - name: risk_unit_id
+        tests:
+          - unique
+          - not_null
+
+      - name: policy_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_policy')
+                field: policy_id
+
+  - name: dim_coverage
+    columns:
+      - name: coverage_id
+        tests:
+          - unique
+          - not_null
+
+      - name: policy_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_policy')
+                field: policy_id
+
+      - name: risk_unit_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_risk_unit')
+                field: risk_unit_id
+
+  # ============================================================
+  # PREMIUM
+  # ============================================================
+  - name: fct_premium_transaction
+    description: >
+      Canonical premium transaction fact. One row represents one
+      premium-changing transaction for a policy coverage.
+
+    columns:
+      - name: transaction_id
+        description: Unique identifier for the premium transaction.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: policy_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_policy')
+                field: policy_id
+
+      - name: coverage_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_coverage')
+                field: coverage_id
+
+      - name: transaction_type
+        data_tests:
+          - not_null
+
+      - name: transaction_date
+        data_tests:
+          - not_null
+
+      - name: premium_change
+        data_tests:
+          - not_null
+
+
+  # ============================================================
+  # CLAIMS
+  # ============================================================
+
+  - name: fct_claim
+    description: >
+      Canonical claim fact. One row represents one insurance claim.
+
+    columns:
+      - name: claim_id
+        description: Unique identifier for the claim.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: policy_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_policy')
+                field: policy_id
+
+      - name: risk_unit_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_risk_unit')
+                field: risk_unit_id
+
+      - name: coverage_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_coverage')
+                field: coverage_id
+
+      - name: loss_date
+        data_tests:
+          - not_null
+
+      - name: reported_date
+        data_tests:
+          - not_null
+
+      - name: claim_status
+        data_tests:
+          - not_null
+
+
+  - name: fct_claim_transaction
+    description: >
+      Canonical claim financial transaction fact. One row represents
+      one financial transaction affecting a claim.
+
+    columns:
+      - name: transaction_id
+        description: Unique identifier for the claim transaction.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: claim_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_claim')
+                field: claim_id
+
+      - name: transaction_date
+        data_tests:
+          - not_null
+
+      - name: transaction_type
+        data_tests:
+          - not_null
+
+      - name: paid_loss_change
+        data_tests:
+          - not_null
+
+      - name: case_reserve_change
+        data_tests:
+          - not_null
+
+      - name: paid_expense_change
+        data_tests:
+          - not_null
+
+      - name: case_expense_change
+        data_tests:
+          - not_null
+
+      - name: recovery_change
+        data_tests:
+          - not_null
+
+
+  # ============================================================
+  # EXPOSURE
+  # ============================================================
+
+  - name: fct_exposure
+    description: >
+      Canonical monthly exposure fact. One row represents one risk unit
+      and coverage during one calendar month, with earned exposure and
+      earned premium.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - risk_unit_id
+              - coverage_id
+              - calendar_month
+
+    columns:
+      - name: exposure_id
+        description: >
+          Surrogate key identifying the risk-unit, coverage,
+          and calendar-month exposure record.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: policy_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_policy')
+                field: policy_id
+
+      - name: risk_unit_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_risk_unit')
+                field: risk_unit_id
+
+      - name: coverage_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_coverage')
+                field: coverage_id
+
+      - name: calendar_month
+        data_tests:
+          - not_null
+
+      - name: exposure_unit
+        data_tests:
+          - not_null
+
+      - name: exposure_amount
+        data_tests:
+          - not_null
+
+      - name: earned_premium
+        data_tests:
+          - not_null

@@ -1,3 +1,6 @@
+-- Verifies the consistency of active day calculations between the total
+-- active period and the monthly grain breakdown for each insurance coverage.
+
 with monthly as (
 
     select

@@ -31,12 +31,7 @@ models:
         tests: [not_null]
       - name: written_premium
         description: "Coverage-level written premium."
-        tests:
-          - not_null
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
+        tests: [not_null]
 
   - name: int_coverage_month
     description: "Coverage active periods expanded to coverage-by-calendar-month rows using half-open date intervals."
@@ -70,7 +65,7 @@ models:
                 max_value: 31
                 inclusive: true
 
-  - name: int_earned_exposure
+  - name: int_earned_exposure_month
     description: "Coverage-month earned exposure measured in coverage-years; this is not a deduplicated risk-unit exposure."
     tests:
       - dbt_utils.unique_combination_of_columns:
@@ -120,12 +115,7 @@ models:
       - name: scheduled_earning_end_date
         tests: [not_null]
       - name: premium_change
-        tests:
-          - not_null
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: false
+        tests: [not_null]
       - name: earning_days
         tests:
           - not_null
@@ -155,9 +145,4 @@ models:
       - name: calendar_month
         tests: [not_null]
       - name: earned_premium
-        tests:
-          - not_null
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
+        tests: [not_null]

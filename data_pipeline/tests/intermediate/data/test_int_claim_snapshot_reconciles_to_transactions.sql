@@ -16,7 +16,7 @@ with expected as (
                 order by t.transaction_date desc
             ) as rn
         from {{ ref('stg_claim') }} t
-        join {{ ref('dim_valuation_dates') }} v
+        join {{ ref('int_valuation_dates') }} v
           on t.transaction_date <= v.valuation_date
     )
     where rn = 1

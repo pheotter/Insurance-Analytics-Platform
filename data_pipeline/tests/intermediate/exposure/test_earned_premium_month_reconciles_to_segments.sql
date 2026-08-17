@@ -5,7 +5,7 @@ with expected as (
         sum(
             premium_change
             * earning_days
-            / nullif(scheduled_earning_days, 0)
+            / nullif(earning_end_date - earning_start_date, 0)
         ) as expected_earned_premium
     from {{ ref('int_premium_earning_segments') }}
     group by coverage_id

@@ -1,7 +1,7 @@
 with valuation as (
 
     select *
-    from {{ ref('dim_valuation_dates') }}
+    from {{ ref('int_valuation_dates') }}
 
 ),
 

@@ -1,7 +1,7 @@
 with exposure as (
 
     select *
-    from {{ ref('int_earned_exposure') }}
+    from {{ ref('int_earned_exposure_month') }}
 
 ),
 
@@ -67,9 +67,12 @@ from exposure e
 left join premium pr
     on e.coverage_id = pr.coverage_id
    and e.calendar_month = pr.calendar_month
+
 join policy p
     on e.policy_id = p.policy_id
+
 join risk_unit r
     on e.risk_unit_id = r.risk_unit_id
+    
 join coverage c
     on e.coverage_id = c.coverage_id
