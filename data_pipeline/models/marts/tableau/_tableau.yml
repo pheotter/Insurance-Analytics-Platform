@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: tableau_pricing_dashboard
+    description: "Tableau-ready pricing dashboard mart at approved selection, triangle grain, and development pool level."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: triangle_grain
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: line_of_business
+        data_tests: [not_null]
+      - name: earned_exposure
+        data_tests: [not_null]
+      - name: indicated_premium
+        data_tests: [not_null]
+      - name: indicated_rate_change
+        data_tests: [not_null]
+      - name: control_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PASS", "WARN", "FAIL"]
+
+  - name: tableau_triangle_diagnostics
+    description: "Tableau-ready pooled triangle diagnostic mart for accident/development heatmaps and incurred reconciliation."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - triangle_grain
+              - development_pool_id
+              - accident_period
+              - development_age_months
+    columns:
+      - name: triangle_grain
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: accident_period
+        data_tests: [not_null]
+      - name: development_age_months
+        data_tests: [not_null]
+      - name: cumulative_incurred_loss
+        data_tests: [not_null]
+
+  - name: tableau_control_dashboard
+    description: "Tableau-ready control dashboard mart with financial reconciliation and selection coverage checks."
+    columns:
+      - name: metric_name
+        data_tests: [not_null, unique]
+      - name: control_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PASS", "WARN", "FAIL"]

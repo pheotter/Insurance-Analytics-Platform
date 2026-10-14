@@ -1,7 +1,52 @@
-with exposure as (
+{{ config(
+    materialized='incremental',
+    unique_key='coverage_id',
+    incremental_strategy='delete+insert',
+    on_schema_change='fail'
+) }}
+
+with changed_coverages as (
+
+    select distinct coverage_id
+    from {{ ref('int_earned_exposure_month') }}
+
+    {% if is_incremental() %}
+    where ingested_at >= dateadd(
+        day,
+        -{{ var('incremental_lookback_days', 7) }},
+        (
+            select coalesce(max(ingested_at), to_timestamp_ntz('1900-01-01'))
+            from {{ this }}
+        )
+    )
+    {% endif %}
+
+    union
+
+    select distinct coverage_id
+    from {{ ref('int_earned_premium_month') }}
+
+    {% if is_incremental() %}
+    where ingested_at >= dateadd(
+        day,
+        -{{ var('incremental_lookback_days', 7) }},
+        (
+            select coalesce(max(ingested_at), to_timestamp_ntz('1900-01-01'))
+            from {{ this }}
+        )
+    )
+    {% endif %}
+
+),
+
+exposure as (
 
     select *
     from {{ ref('int_earned_exposure_month') }}
+
+    {% if is_incremental() %}
+    join changed_coverages using (coverage_id)
+    {% endif %}
 
 ),
 
@@ -9,6 +54,10 @@ premium as (
 
     select *
     from {{ ref('int_earned_premium_month') }}
+
+    {% if is_incremental() %}
+    join changed_coverages using (coverage_id)
+    {% endif %}
 
 ),
 
@@ -61,7 +110,13 @@ select
     coalesce(
         pr.earned_premium,
         0
-    ) as earned_premium
+    ) as earned_premium,
+
+    greatest(
+        e.ingested_at,
+        coalesce(pr.ingested_at, e.ingested_at)
+    ) as ingested_at,
+    current_timestamp() as processed_at
 
 from exposure e
 left join premium pr

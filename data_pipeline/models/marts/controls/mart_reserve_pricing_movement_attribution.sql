@@ -1,64 +1,76 @@
 with base as (
 
     select
-        fs.state_grp,
-        fs.risk_class_grp,
-        fs.vehicle_segment_grp,
-        sum(fs.total_earned_exposure) as total_earned_exposure,
-        sum(fs.frequency * fs.severity * fs.total_earned_exposure) / nullif(sum(fs.total_earned_exposure), 0) as base_pure_premium,
-        sum(fst.trended_frequency * fst.trended_severity * fst.total_earned_exposure) / nullif(sum(fst.total_earned_exposure), 0) as trended_pure_premium
-    from {{ ref('fct_frequency_severity') }} fs
-    join {{ ref('fct_frequency_severity_trended') }} fst
-      on fs.state_grp = fst.state_grp
-     and fs.risk_class_grp = fst.risk_class_grp
-     and fs.vehicle_segment_grp = fst.vehicle_segment_grp
-     and fs.accident_year = fst.accident_year
-    group by 1, 2, 3
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        pool_level,
+        line_of_business,
+        sum(pure_premium * earned_exposure) / nullif(sum(earned_exposure), 0)
+            as untrended_pure_premium,
+        sum(earned_exposure) as earned_exposure,
+        sum(earned_premium) as earned_premium
+    from {{ ref('fct_actuarial_frequency_severity') }}
+    group by
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        pool_level,
+        line_of_business
+
+),
+
+trended as (
+
+    select
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        line_of_business,
+        sum(pure_premium * earned_exposure) / nullif(sum(earned_exposure), 0)
+            as trended_pure_premium
+    from {{ ref('fct_pure_premium') }}
+    group by
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        line_of_business
 
 ),
 
 indicated as (
 
-    select
-        state_grp,
-        risk_class_grp,
-        vehicle_segment_grp,
-        indicated_premium
+    select *
     from {{ ref('fct_indicated_premium') }}
-
-),
-
-reserve_impact as (
-
-    select
-        state_grp,
-        risk_class_grp,
-        vehicle_segment_grp,
-        sum(loss_method_impact) as reserve_loss_method_impact,
-        sum(claim_count_method_impact) as reserve_claim_count_method_impact
-    from {{ ref('mart_assumption_impact_reconciliation') }}
-    group by 1, 2, 3
 
 )
 
 select
-    b.state_grp,
-    b.risk_class_grp,
-    b.vehicle_segment_grp,
-    b.total_earned_exposure,
-    b.base_pure_premium,
-    b.trended_pure_premium,
+    b.selection_version_id,
+    b.triangle_grain,
+    b.development_pool_id,
+    b.pool_level,
+    b.line_of_business,
+    b.earned_exposure,
+    b.earned_premium,
+    b.untrended_pure_premium,
+    t.trended_pure_premium,
+    t.trended_pure_premium - b.untrended_pure_premium
+        as trend_impact_on_pure_premium,
     i.indicated_premium,
-    b.trended_pure_premium - b.base_pure_premium as trend_impact_on_pure_premium,
-    i.indicated_premium - b.trended_pure_premium as expense_and_profit_impact,
-    r.reserve_loss_method_impact,
-    r.reserve_claim_count_method_impact
+    i.indicated_premium - t.trended_pure_premium
+        as expense_and_profit_impact,
+    i.current_average_premium,
+    i.indicated_premium / nullif(i.current_average_premium, 0) - 1
+        as indicated_rate_change
 from base b
+left join trended t
+  on b.selection_version_id = t.selection_version_id
+ and b.triangle_grain = t.triangle_grain
+ and b.development_pool_id = t.development_pool_id
+ and b.line_of_business = t.line_of_business
 left join indicated i
-  on b.state_grp = i.state_grp
- and b.risk_class_grp = i.risk_class_grp
- and b.vehicle_segment_grp = i.vehicle_segment_grp
-left join reserve_impact r
-  on b.state_grp = r.state_grp
- and b.risk_class_grp = r.risk_class_grp
- and b.vehicle_segment_grp = r.vehicle_segment_grp
+  on b.selection_version_id = i.selection_version_id
+ and b.triangle_grain = i.triangle_grain
+ and b.development_pool_id = i.development_pool_id
+ and b.line_of_business = i.line_of_business

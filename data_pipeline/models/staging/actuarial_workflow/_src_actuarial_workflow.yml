@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: actuarial_workflow
+    database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA') }}"
+    tables:
+      - name: selection_version
+        identifier: ACTUARIAL_SELECTION_VERSION
+      - name: ldf_selection
+        identifier: ACTUARIAL_LDF_SELECTION
+      - name: tail_selection
+        identifier: ACTUARIAL_TAIL_SELECTION
+      - name: ultimate_selection
+        identifier: ACTUARIAL_ULTIMATE_SELECTION
+      - name: approval_event
+        identifier: ACTUARIAL_APPROVAL_EVENT
+      - name: pipeline_run
+        identifier: ACTUARIAL_PIPELINE_RUN

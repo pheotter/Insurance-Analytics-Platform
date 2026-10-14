@@ -3,167 +3,285 @@ version: 2
 models:
   - name: stg_policy
     description: "Standardized policy-term records shared across all lines of business."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: policy_id
+        data_type: varchar
         description: "Globally unique policy identifier."
         tests: [not_null, unique]
       - name: policy_number
+        data_type: varchar
         description: "Business-facing policy number."
       - name: insured_id
+        data_type: varchar
         description: "Identifier of the insured party."
       - name: product_id
+        data_type: varchar
         description: "Insurance product identifier."
       - name: line_of_business
+        data_type: varchar
         description: "Insurance line of business."
       - name: effective_date
+        data_type: date
         description: "Policy effective date."
       - name: expiration_date
+        data_type: date
         description: "Policy contractual expiration date."
       - name: cancellation_date
+        data_type: date
         description: "Early termination date when the policy was cancelled."
       - name: policy_status
+        data_type: varchar
         description: "Standardized policy lifecycle status renamed from source status."
       - name: underwriting_tier
+        data_type: varchar
         description: "Underwriting risk tier used by pricing logic."
       - name: primary_state
+        data_type: varchar
         description: "Primary state associated with the policy."
       - name: term_months
+        data_type: number(38,0)
         description: "Policy term length in months."
       - name: source_system
+        data_type: varchar
         description: "Operational policy administration source."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."
 
   - name: stg_policy_risk_unit
     description: "Standardized insured risk units shared across all lines of business."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: risk_unit_id
+        data_type: varchar
         description: "Globally unique risk-unit identifier."
         tests: [not_null, unique]
       - name: policy_id
+        data_type: varchar
         description: "Parent policy identifier."
         tests: [not_null]
       - name: risk_unit_type
+        data_type: varchar
         description: "Type of insured object."
       - name: source_risk_unit_id
+        data_type: varchar
         description: "Identifier of the LOB-specific source entity."
       - name: effective_date
+        data_type: date
         description: "Risk-unit effective date."
       - name: expiration_date
+        data_type: date
         description: "Risk-unit expiration date."
       - name: policy_risk_unit_status
+        data_type: varchar
         description: "Standardized risk-unit status renamed from source status."
       - name: exposure_unit
+        data_type: varchar
         description: "Exposure measurement unit for the insured object."
       - name: source_system
+        data_type: varchar
         description: "Operational source of the risk unit."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."
 
   - name: stg_policy_coverage
     description: "Standardized coverage terms at the policy and risk-unit grain."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: coverage_id
+        data_type: varchar
         description: "Globally unique coverage-term identifier."
         tests: [not_null, unique]
       - name: policy_id
+        data_type: varchar
         description: "Parent policy identifier."
         tests: [not_null]
       - name: risk_unit_id
+        data_type: varchar
         description: "Covered risk-unit identifier."
         tests: [not_null]
       - name: coverage_code
+        data_type: varchar
         description: "LOB-specific coverage code."
       - name: coverage_family
+        data_type: varchar
         description: "Normalized coverage family."
       - name: effective_date
+        data_type: date
         description: "Coverage effective date."
       - name: expiration_date
+        data_type: date
         description: "Coverage expiration date."
       - name: limit_amount
+        data_type: number(18,2)
         description: "Coverage limit or insured value."
       - name: deductible_amount
+        data_type: number(18,2)
         description: "Coverage deductible."
       - name: written_premium
+        data_type: number(18,2)
         description: "Written premium for the coverage term."
       - name: source_system
+        data_type: varchar
         description: "Operational policy administration source."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."
 
   - name: stg_premium_transaction
     description: "Standardized premium transactions including new business, endorsements, and cancellations."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: transaction_id
+        data_type: varchar
         description: "Globally unique premium transaction identifier."
         tests: [not_null, unique]
       - name: policy_id
+        data_type: varchar
         description: "Parent policy identifier."
         tests: [not_null]
       - name: coverage_id
+        data_type: varchar
         description: "Coverage affected by the premium transaction."
         tests: [not_null]
       - name: transaction_type
+        data_type: varchar
         description: "Premium transaction classification."
       - name: transaction_date
+        data_type: date
         description: "Date the premium transaction was posted."
       - name: transaction_reason
+        data_type: varchar
         description: "Business reason for the transaction."
       - name: premium_change
+        data_type: number(18,2)
         description: "Signed premium movement generated by the transaction."
       - name: cumulative_premium
+        data_type: number(18,2)
         description: "Cumulative written premium after the transaction."
       - name: source_system
+        data_type: varchar
         description: "Operational billing source."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."
 
   - name: stg_claim
     description: "Standardized claim header records shared across all lines of business."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: claim_id
+        data_type: varchar
         description: "Globally unique claim identifier."
         tests: [not_null, unique]
       - name: policy_id
+        data_type: varchar
         description: "Policy under which the claim was reported."
         tests: [not_null]
       - name: risk_unit_id
+        data_type: varchar
         description: "Insured risk unit associated with the loss."
         tests: [not_null]
       - name: coverage_id
+        data_type: varchar
         description: "Coverage responding to the claim."
         tests: [not_null]
       - name: coverage_code
+        data_type: varchar
         description: "Coverage code reported on the claim."
       - name: loss_date
+        data_type: date
         description: "Date the insured loss occurred."
       - name: reported_date
+        data_type: date
         description: "Date the claim was reported."
       - name: claim_type
+        data_type: varchar
         description: "Claim scenario or loss type."
       - name: cause_code
+        data_type: varchar
         description: "Cause-of-loss code."
       - name: claim_status
+        data_type: varchar
         description: "Standardized claim lifecycle status."
       - name: source_system
+        data_type: varchar
         description: "Operational claims administration source."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."
 
   - name: stg_claim_transaction
     description: "Standardized claim financial movements used for actuarial development."
+    config:
+      contract:
+        enforced: true
     columns:
       - name: transaction_id
+        data_type: varchar
         description: "Globally unique claim transaction identifier."
         tests: [not_null, unique]
       - name: claim_id
+        data_type: varchar
         description: "Parent claim identifier."
         tests: [not_null]
       - name: transaction_type
+        data_type: varchar
         description: "Claim financial transaction classification."
       - name: transaction_date
+        data_type: date
         description: "Date the claim transaction was posted."
       - name: paid_loss_change
+        data_type: number(18,2)
         description: "Change in paid indemnity loss."
       - name: case_reserve_change
+        data_type: number(18,2)
         description: "Signed movement in case loss reserve."
       - name: paid_expense_change
+        data_type: number(18,2)
         description: "Change in paid loss adjustment expense."
       - name: case_expense_change
+        data_type: number(18,2)
         description: "Signed movement in case expense reserve."
       - name: recovery_change
+        data_type: number(18,2)
         description: "Change in salvage, subrogation, or other recoveries."
       - name: incurred_loss_change
+        data_type: number(18,2)
         description: "Net incurred movement for the transaction."
       - name: source_system
+        data_type: varchar
         description: "Operational claim transaction source."
+      - name: load_batch_id
+        data_type: varchar
+        description: "Synthetic ingestion batch identifier."
+      - name: ingested_at
+        data_type: timestamp_ntz
+        description: "Timestamp when the raw record was ingested."

@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: fct_frequency_severity_trended
+    description: "Versioned frequency and severity metrics after applying trend assumptions."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+              - accident_period
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: accident_period
+        data_tests: [not_null]
+      - name: trended_frequency
+        data_tests: [not_null]
+      - name: trended_severity
+        data_tests: [not_null]
+
+  - name: fct_pure_premium
+    description: "Versioned trended pure premium by development pool and accident period."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+              - accident_period
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: earned_exposure
+        data_tests: [not_null]
+      - name: pure_premium
+        data_tests: [not_null]
+      - name: untrended_pure_premium
+        data_tests: [not_null]

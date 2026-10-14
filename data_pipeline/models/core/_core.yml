@@ -251,7 +251,7 @@ models:
         data_tests:
           - not_null
 
-      - name: exposure_amount
+      - name: earned_exposure
         data_tests:
           - not_null
 

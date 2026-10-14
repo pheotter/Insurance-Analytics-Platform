@@ -7,15 +7,36 @@ with control_totals as (
 
 tolerances as (
 
-    select 'written_premium_to_earned_premium_total' as metric_name, 0.01 as absolute_tolerance, 0.000001 as percentage_tolerance
+    select
+        'claim_transactions_to_latest_snapshot_paid_loss' as metric_name,
+        0.01 as absolute_tolerance,
+        0.000001 as percentage_tolerance
     union all
-    select 'written_exposure_to_earned_exposure_total' as metric_name, 0.000001 as absolute_tolerance, 0.000001 as percentage_tolerance
+    select
+        'claim_transactions_to_latest_snapshot_incurred_loss',
+        0.01,
+        0.000001
     union all
-    select 'latest_cumulative_paid_total' as metric_name, 0.01 as absolute_tolerance, 0.000001 as percentage_tolerance
+    select
+        'latest_snapshot_to_pooled_triangle_incurred_loss',
+        0.01,
+        0.000001
     union all
-    select 'latest_cumulative_incurred_total' as metric_name, 0.01 as absolute_tolerance, 0.000001 as percentage_tolerance
+    select
+        'latest_snapshot_to_pooled_triangle_claim_count',
+        0.000001,
+        0.000001
     union all
-    select 'latest_claim_count_total' as metric_name, 0.000001 as absolute_tolerance, 0.000001 as percentage_tolerance
+    select
+        'fct_exposure_to_development_exposure_earned_exposure',
+        0.000001,
+        0.000001
+    union all
+    select
+        'fct_exposure_to_development_exposure_earned_premium',
+        0.01,
+        0.000001
+
 ),
 
 evaluated as (

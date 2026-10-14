@@ -2,6 +2,7 @@
 env/
 logs/
 output/
+dist/
 airflow/review_packets/
 airflow/.env
 airflow/logs/
@@ -9,6 +10,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-data_generation/.env
+.env
 data_generation/output
-data_generation/*.pem
+secrets/*.pem

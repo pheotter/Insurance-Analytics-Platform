@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insurance-actuarial-engine"
+version = "0.1.0"
+description = "Auditable multi-line actuarial development and ultimate modeling engine"
+requires-python = ">=3.10"
+dependencies = [
+    "chainladder>=0.10,<0.11",
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+snowflake = ["snowflake-connector-python[pandas]>=3.0"]
+test = ["pytest>=8.0"]
+
+[tool.setuptools]
+packages = ["actuarial_engine"]
+package-dir = {actuarial_engine = "."}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:overflow encountered in square:RuntimeWarning:chainladder.core.dunders",
+]

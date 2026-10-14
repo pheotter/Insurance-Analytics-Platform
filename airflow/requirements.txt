@@ -5,3 +5,4 @@ openpyxl
 snowflake-connector-python[pandas]
 cryptography
 python-dotenv
+chainladder>=0.10,<0.11

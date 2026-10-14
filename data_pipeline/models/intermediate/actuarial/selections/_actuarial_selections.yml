@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: int_approved_actuarial_ultimate_selection
+    columns:
+      - name: selection_version_id
+        data_tests:
+          - not_null
+      - name: selected_ultimate_value
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - measure_type
+              - accident_period

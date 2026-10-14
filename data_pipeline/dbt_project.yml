@@ -31,6 +31,7 @@ vars:
   calendar_end_date: '2031-01-01'
 
   as_of_date: '2023-12-31'
+  incremental_lookback_days: 7
 
 # In this example config, we tell dbt to build all models in the example/
 # directory as views. These settings can be overridden in the individual model
@@ -71,18 +72,6 @@ models:
         development:
           +tags: ["intermediate", "actuarial", "development"]
 
-        cdf:
-          +tags: ["intermediate", "actuarial", "cdf"]
-
-        ldf:
-          +tags: ["intermediate", "actuarial", "ldf"]
-
-        triangle:
-          +tags: ["intermediate", "actuarial", "triangle"]
-
-        ultimate:
-          +tags: ["intermediate", "actuarial", "ultimate"]
-
 
     core:
       +materialized: table
@@ -98,3 +87,6 @@ models:
     marts:
       +materialized: table
       +tags: ["mart"]
+
+      tableau:
+        +tags: ["mart", "tableau"]

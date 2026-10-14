@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: fct_indicated_premium
+    description: "Approved pricing indication by selection version, triangle grain, and development pool."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: earned_exposure
+        data_tests: [not_null]
+      - name: current_average_premium
+        data_tests: [not_null]
+      - name: pure_premium
+        data_tests: [not_null]
+      - name: indicated_premium
+        data_tests: [not_null]
+
+  - name: mart_indicated_rate_change_pure_premium
+    description: "BI-ready rate indication output with current premium, indicated premium, and rate-change metrics."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: indicated_rate_change
+        data_tests: [not_null]
+      - name: target_loss_ratio_rate_change
+        data_tests: [not_null]

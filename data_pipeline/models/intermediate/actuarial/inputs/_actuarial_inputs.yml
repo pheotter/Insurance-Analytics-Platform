@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: int_development_exposure
+    description: >
+      Earned exposure and premium aligned to the pooled triangle grain. The
+      actuarial engine uses exposure_base for Cape Cod; governed expected-value
+      assumptions are supplied separately for BF, Benktander, and Expected Loss.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - triangle_grain
+              - development_pool_id
+              - accident_period
+    columns:
+      - name: triangle_grain
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [monthly, quarterly, half_year, annual]
+      - name: development_pool_id
+        tests: [not_null]
+      - name: pool_level
+        tests: [not_null]
+      - name: line_of_business
+        tests: [not_null]
+      - name: accident_period
+        tests: [not_null]
+      - name: earned_exposure
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+      - name: earned_premium
+        tests: [not_null]
+      - name: exposure_base
+        description: Earned premium used as the default Cape Cod exposure base.
+        tests: [not_null]

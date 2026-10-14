@@ -26,6 +26,34 @@ A personal project focused on **auto insurance actuarial pricing**, using **Snow
 - **Transformation framework**: dbt
 - **Data simulation and workbook utilities**: Python
 - **Orchestration**: Airflow
+- **Actuarial calculation**: chainladder Python package
+- **Workflow API**: FastAPI
+- **Actuarial review UI**: Streamlit
+
+### API-driven review workflow
+
+The repository now includes a versioned alternative to the original Excel
+review checkpoints:
+
+```text
+actuarial_engine candidates
+    -> FastAPI selection service
+    -> Streamlit actuarial review
+    -> independent approval and audit event
+    -> approved_actuarial_pricing Airflow DAG
+    -> dbt frequency/severity/pure premium
+```
+
+Initialize the Snowflake workflow tables and start the two local services:
+
+```bash
+python -m actuarial_workflow.cli init-schema
+bash scripts/run_actuarial_api.sh
+bash scripts/run_streamlit.sh
+```
+
+See `actuarial_workflow/README.md` for environment variables, workflow states,
+API endpoints, and the React replacement boundary.
 
 ---
 
@@ -148,6 +176,54 @@ You can also run dbt manually with segmentation vars:
 ```bash
 dbt run --vars '{segmentation_version: v1}'
 ```
+
+### 6.5 Development Validation and CI
+
+This project uses a Git-based development workflow:
+
+1. Create a feature branch for model, pipeline, API, or workflow changes.
+2. Run local validation before opening a pull request.
+3. Open a pull request so dbt model changes, Python service changes, tests, and CI results are reviewable together.
+4. Merge only after automated checks pass.
+
+Run the same validation entry points locally that CI uses:
+
+```bash
+bash scripts/validate.sh python
+bash scripts/validate.sh dbt-static
+bash scripts/validate.sh all
+```
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs:
+
+- Python syntax checks for API, workflow, actuarial engine, platform common code, and Airflow DAGs
+- Python unit tests with `pytest`
+- dbt dependency installation
+- dbt parse and compile checks for staging and Tableau-facing marts
+- optional Snowflake-backed dbt contract build when Snowflake secrets are configured
+- deployment artifact packaging after successful checks on `main` or `master`
+
+This keeps transformation logic, model contracts, actuarial workflow code, and dashboard-facing outputs testable and repeatable across local development and CI.
+
+Deployment is intentionally separated from CI. The CI workflow packages a
+versioned artifact under `dist/` and uploads it to GitHub Actions artifacts.
+Remote deployment is handled by the manual workflow in
+`.github/workflows/deploy.yml`; it requires a user to run the workflow and type
+`DEPLOY`.
+
+Required deployment secrets:
+
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_PATH`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_PORT` optional, defaults to `22`
+
+The deployment workflow uploads the artifact to the remote host, extracts it
+under `${DEPLOY_PATH}/releases/<git-sha>`, and updates
+`${DEPLOY_PATH}/current` to point to that release. This mirrors a lightweight
+release-based deployment pattern without automatically changing production on
+every push.
 
 ---
 

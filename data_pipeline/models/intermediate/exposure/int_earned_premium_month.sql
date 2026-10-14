@@ -1,4 +1,29 @@
-with earning_segments as (
+{{ config(
+    materialized='incremental',
+    unique_key='coverage_id',
+    incremental_strategy='delete+insert',
+    on_schema_change='fail'
+) }}
+
+with changed_coverages as (
+
+    select distinct coverage_id
+    from {{ ref('int_premium_earning_segments') }}
+
+    {% if is_incremental() %}
+    where ingested_at >= dateadd(
+        day,
+        -{{ var('incremental_lookback_days', 7) }},
+        (
+            select coalesce(max(ingested_at), to_timestamp_ntz('1900-01-01'))
+            from {{ this }}
+        )
+    )
+    {% endif %}
+
+),
+
+earning_segments as (
 
     select
 
@@ -9,9 +34,15 @@ with earning_segments as (
         earning_start_date,
         earning_end_date,
         premium_change,
-        earning_days
+        scheduled_earning_days,
+        earning_days,
+        ingested_at
 
     from {{ ref('int_premium_earning_segments')}}
+
+    {% if is_incremental() %}
+    join changed_coverages using (coverage_id)
+    {% endif %}
 
 ),
 
@@ -35,6 +66,7 @@ expanded as (
         e.coverage_id,
         e.transaction_type,
         e.premium_change,
+        e.ingested_at,
 
         m.month_start as calendar_month,
 
@@ -49,6 +81,9 @@ expanded as (
         ) as earning_end_in_month,
 
         e.earning_days
+            as earning_days,
+
+        e.scheduled_earning_days
 
     from earning_segments e
     join months m
@@ -81,8 +116,10 @@ select
     sum(
         premium_change
         * earned_days_in_month
-        / nullif(earning_days, 0)
-    ) as earned_premium
+        / nullif(scheduled_earning_days, 0)
+    ) as earned_premium,
+    max(ingested_at) as ingested_at,
+    current_timestamp() as processed_at
 
 from monthly
 group by policy_id, coverage_id, calendar_month

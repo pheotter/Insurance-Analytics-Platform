@@ -1,41 +1,65 @@
-with required as (
-    select distinct
-        state_grp,
-        risk_class_grp,
-        vehicle_segment_grp,
-        development
-    from {{ ref('int_ldf_raw') }}
-    where link_ratio_incurred is not null
+with approved as (
+
+    select *
+    from {{ ref('int_approved_actuarial_ultimate_selection') }}
+
 ),
 
-selected as (
+loss as (
+
     select distinct
-        state_grp,
-        risk_class_grp,
-        vehicle_segment_grp,
-        development
-    from {{ ref('int_ldf_selected_incurred') }}
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        pool_level,
+        line_of_business,
+        accident_period
+    from approved
+    where measure_type = '{{ var("loss_measure", "incurred") }}'
+
+),
+
+claim_count as (
+
+    select distinct
+        selection_version_id,
+        triangle_grain,
+        development_pool_id,
+        pool_level,
+        line_of_business,
+        accident_period
+    from approved
+    where measure_type = 'reported_count'
+
 ),
 
 joined as (
+
     select
-        coalesce(r.state_grp, s.state_grp) as state_grp,
-        coalesce(r.risk_class_grp, s.risk_class_grp) as risk_class_grp,
-        coalesce(r.vehicle_segment_grp, s.vehicle_segment_grp) as vehicle_segment_grp,
-        coalesce(r.development, s.development) as development,
-
+        coalesce(l.selection_version_id, c.selection_version_id)
+            as selection_version_id,
+        coalesce(l.triangle_grain, c.triangle_grain) as triangle_grain,
+        coalesce(l.development_pool_id, c.development_pool_id)
+            as development_pool_id,
+        coalesce(l.pool_level, c.pool_level) as pool_level,
+        coalesce(l.line_of_business, c.line_of_business) as line_of_business,
+        coalesce(l.accident_period, c.accident_period) as accident_period,
         case
-            when r.development is not null and s.development is not null then 'matched'
-            when r.development is not null and s.development is null then 'missing_selected'
-            when r.development is null and s.development is not null then 'extra_selected'
+            when l.accident_period is not null and c.accident_period is not null
+                then 'matched'
+            when l.accident_period is not null and c.accident_period is null
+                then 'missing_reported_count_selection'
+            when l.accident_period is null and c.accident_period is not null
+                then 'missing_loss_selection'
         end as status
+    from loss l
+    full outer join claim_count c
+      on l.selection_version_id = c.selection_version_id
+     and l.triangle_grain = c.triangle_grain
+     and l.development_pool_id = c.development_pool_id
+     and l.line_of_business = c.line_of_business
+     and l.accident_period = c.accident_period
 
-    from required r
-    full outer join selected s
-      on r.state_grp = s.state_grp
-     and r.risk_class_grp = s.risk_class_grp
-     and r.vehicle_segment_grp = s.vehicle_segment_grp
-     and r.development = s.development
 )
 
 select *

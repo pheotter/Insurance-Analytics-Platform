@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_actuarial_selection_version
+    columns:
+      - name: selection_version_id
+        data_tests:
+          - not_null
+          - unique
+      - name: model_run_id
+        data_tests:
+          - not_null
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED']
+
+  - name: stg_actuarial_ldf_selection
+    columns:
+      - name: selection_version_id
+        data_tests:
+          - not_null
+      - name: selected_ldf
+        data_tests:
+          - not_null
+
+  - name: stg_actuarial_tail_selection
+    columns:
+      - name: selection_version_id
+        data_tests:
+          - not_null
+      - name: selected_tail_factor
+        data_tests:
+          - not_null
+
+  - name: stg_actuarial_ultimate_selection
+    columns:
+      - name: selection_version_id
+        data_tests:
+          - not_null
+      - name: accident_period
+        data_tests:
+          - not_null
+      - name: selected_ultimate_value
+        data_tests:
+          - not_null

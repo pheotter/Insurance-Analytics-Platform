@@ -1,4 +1,5 @@
 -- models/actuarial/development/int_loss_triangle_pooled.sql
+{{ config(materialized='table') }}
 
 with development as (
 

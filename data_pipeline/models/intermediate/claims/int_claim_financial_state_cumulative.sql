@@ -1,6 +1,30 @@
 -- models/intermediate/claims/int_claim_financial_state_cumulative.sql
+{{ config(
+    materialized='incremental',
+    unique_key='claim_id',
+    incremental_strategy='delete+insert',
+    on_schema_change='fail'
+) }}
 
-with events as (
+with changed_claims as (
+
+    select distinct claim_id
+    from {{ ref('int_claim_financial_events') }}
+
+    {% if is_incremental() %}
+    where ingested_at >= dateadd(
+        day,
+        -{{ var('incremental_lookback_days', 7) }},
+        (
+            select coalesce(max(latest_event_ingested_at), to_timestamp_ntz('1900-01-01'))
+            from {{ this }}
+        )
+    )
+    {% endif %}
+
+),
+
+events as (
 
     select
         claim_id,
@@ -12,9 +36,14 @@ with events as (
         coalesce(paid_expense_change, 0) as paid_expense_change,
         coalesce(case_expense_change, 0) as case_expense_change,
         coalesce(recovery_change, 0) as recovery_change,
-        coalesce(incurred_loss_change, 0) as incurred_loss_change
+        coalesce(incurred_loss_change, 0) as incurred_loss_change,
+        ingested_at
 
     from {{ ref('int_claim_financial_events') }}
+
+    {% if is_incremental() %}
+    join changed_claims using (claim_id)
+    {% endif %}
 
     -- Point-in-time reproducibility:
     -- this valuation run must not use events after the as-of date.
@@ -49,7 +78,8 @@ daily_events as (
         sum(paid_expense_change) as paid_expense_change,
         sum(case_expense_change) as case_expense_change,
         sum(recovery_change) as recovery_change,
-        sum(incurred_loss_change) as incurred_loss_change
+        sum(incurred_loss_change) as incurred_loss_change,
+        max(ingested_at) as latest_event_ingested_at
 
     from events
     group by claim_id, event_date
@@ -71,6 +101,7 @@ cumulative as (
         case_expense_change,
         recovery_change,
         incurred_loss_change,
+        latest_event_ingested_at,
 
         sum(financial_transaction_count) over (
             partition by claim_id
@@ -146,11 +177,15 @@ select
         + cumulative_case_expense
         - cumulative_recovery
         as calculated_cumulative_incurred,
+    
+    latest_event_ingested_at,
 
     case
         when cumulative_financial_transaction_count > 0
         then true
         else false
-    end as has_financial_activity
+    end as has_financial_activity,
+
+    current_timestamp() as processed_at
 
 from cumulative

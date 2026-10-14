@@ -1,6 +1,30 @@
 -- models/intermediate/claims/int_claim_valuation_snapshot.sql
+{{ config(
+    materialized='incremental',
+    unique_key='claim_id',
+    incremental_strategy='delete+insert',
+    on_schema_change='fail'
+) }}
 
-with valuation_dates as (
+with changed_claims as (
+
+    select distinct claim_id
+    from {{ ref('int_claim_financial_state_period') }}
+
+    {% if is_incremental() %}
+    where latest_event_ingested_at >= dateadd(
+        day,
+        -{{ var('incremental_lookback_days', 7) }},
+        (
+            select coalesce(max(latest_event_ingested_at), to_timestamp_ntz('1900-01-01'))
+            from {{ this }}
+        )
+    )
+    {% endif %}
+
+),
+
+valuation_dates as (
 
     select
         valuation_date,
@@ -38,9 +62,14 @@ claim_states as (
         cumulative_recovery,
         cumulative_incurred_loss,
 
-        calculated_cumulative_incurred
+        calculated_cumulative_incurred,
+        latest_event_ingested_at
 
     from {{ ref('int_claim_financial_state_period') }}
+
+    {% if is_incremental() %}
+    join changed_claims using (claim_id)
+    {% endif %}
 
 ),
 
@@ -122,7 +151,9 @@ snapshots as (
         s.cumulative_recovery,
         s.cumulative_incurred_loss,
 
-        s.calculated_cumulative_incurred
+        s.calculated_cumulative_incurred,
+        s.latest_event_ingested_at,
+        current_timestamp() as processed_at
 
     from claim_states s
 

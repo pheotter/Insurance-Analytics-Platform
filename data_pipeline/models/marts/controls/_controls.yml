@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: mart_control_totals_financial_summary
+    description: "High-level reconciliation totals across transactions, snapshots, triangles, and exposure."
+    columns:
+      - name: metric_name
+        data_tests: [not_null, unique]
+      - name: source_value
+        data_tests: [not_null]
+      - name: target_value
+        data_tests: [not_null]
+
+  - name: mart_control_tolerance_by_metric
+    description: "Control totals evaluated against metric-specific tolerances."
+    columns:
+      - name: metric_name
+        data_tests: [not_null, unique]
+      - name: control_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["PASS", "WARN", "FAIL"]
+
+  - name: mart_reconciliation_by_segment
+    description: "Development-pool reconciliation between claim snapshots, pooled triangles, and exposure."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - development_pool_id
+              - line_of_business
+    columns:
+      - name: development_pool_id
+        data_tests: [not_null]
+      - name: line_of_business
+        data_tests: [not_null]
+
+  - name: mart_incurred_coverage
+    description: "Coverage control confirming approved loss and reported-count selections exist for each selected accident period."
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - matched
+                  - missing_reported_count_selection
+                  - missing_loss_selection
+
+  - name: mart_assumption_impact_reconciliation
+    description: "Row-level bridge from untrended pure premium to trended and indicated premium."
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: trend_impact_on_pure_premium
+        data_tests: [not_null]
+
+  - name: mart_reserve_pricing_movement_attribution
+    description: "Pool-level attribution from untrended pure premium to indicated premium and rate change."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - selection_version_id
+              - triangle_grain
+              - development_pool_id
+              - line_of_business
+    columns:
+      - name: selection_version_id
+        data_tests: [not_null]
+      - name: indicated_rate_change
+        data_tests: [not_null]

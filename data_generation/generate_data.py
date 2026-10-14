@@ -22,7 +22,8 @@ from dotenv import load_dotenv
 from snowflake.connector.pandas_tools import write_pandas
 import snowflake.connector
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
 
 SEED = 42
 random.seed(SEED)
